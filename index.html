@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grievance Portal</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ======== Welcome Screen ======== -->
+    <main id="welcome-screen" class="screen">
+        <div class="container">
+            <h1>Welcome to your very own Grievance Portal, babylove.</h1>
+            <p>As requested, you can submit your mere hungry rants for my viewing pleasure.</p>
+            <p id="days-counter" class="days-text"></p>
+            <button id="enter-btn">Enter</button>
+        </div>
+    </main>
+
+    <!-- ======== Form Screen ======== -->
+    <main id="form-screen" class="screen" style="display: none;">
+        <div class="container">
+            <h2>Submit a Grievance 🥀</h2>
+            <form id="grievance-form">
+                <input type="text" id="title" placeholder="Title" required>
+                <textarea id="description" placeholder="What's bothering baby?" required></textarea>
+                
+                <label for="mood">Mood:</label>
+                <select id="mood">
+                    <option>😞 sad aara hai</option>
+                    <option>😠 angy 😠</option>
+                    <option>💃 fun time hehehehe</option>
+                    <option>🥺 baby me</option>
+                </select>
+                
+                <label for="severity">Severity:</label>
+                <select id="severity">
+                    <option>A cute bournville would fix this 🥰</option>
+                    <option>I need a hug... NOW 🥺</option>
+                    <option>Where my man at 😔</option>
+                    <option>You're sleeping on the couch 😡</option>
+                    <option>Hell hath no fury like me today 🙂</option>
+                </select>
+                
+                <button type="submit">Submit ❤️</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- ======== Thank You Screen ======== -->
+    <main id="thanks-screen" class="screen" style="display: none;">
+        <div class="container">
+            <h2>Thank you, Sehaj 💕</h2>
+            <p>Your grievance has been sent to Ishan 💌</p>
+            <p class="small-text">He will get back to you very soon!<br>(He will think about it)</p>
+            <button id="submit-another-btn">Submit Another</button>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

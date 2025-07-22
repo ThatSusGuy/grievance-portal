@@ -1,0 +1,111 @@
+/* Basic Setup & Background */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-image: url('images/background.jpg');
+    background-size: cover;
+    background-position: center;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Screen container to center content */
+.screen {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* The main content box from the images */
+.container {
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* For Safari */
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+/* Typography */
+h1, h2 {
+    color: #e83e8c; /* A nice pink color */
+    margin-bottom: 20px;
+}
+
+p {
+    margin-bottom: 25px;
+    font-size: 1.1em;
+}
+
+.small-text {
+    font-size: 0.9em;
+    color: #555;
+}
+
+/* Form Styling */
+#grievance-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* space between form elements */
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1em;
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+label {
+    text-align: left;
+    font-weight: bold;
+    color: #555;
+    margin-top: 10px;
+    margin-bottom: -10px; /* pull the select box closer */
+}
+
+/* Button Styling */
+button {
+    padding: 15px 20px;
+    border: none;
+    background-color: #e83e8c;
+    color: white;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #d1307b;
+}
+
+.days-text {
+    font-weight: bold;
+    color: #5d429a; /* A nice deep purple, change as you wish */
+    font-size: 1.2em; /* Make it slightly bigger */
+    margin-top: -10px; /* Adjust spacing if needed */
+}
