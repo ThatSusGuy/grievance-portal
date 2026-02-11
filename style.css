@@ -109,3 +109,138 @@ button:hover {
     font-size: 1.2em; /* Make it slightly bigger */
     margin-top: -10px; /* Adjust spacing if needed */
 }
+
+/* ======== Music Wall Styles ======== */
+
+/* Wider container for music wall to accommodate embeds */
+.music-wall-container {
+    max-width: 600px;
+}
+
+/* Back button */
+.back-btn {
+    align-self: flex-start;
+    background: transparent;
+    color: #5d429a;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+}
+
+.back-btn:hover {
+    background-color: rgba(93, 66, 154, 0.1);
+    color: #5d429a;
+}
+
+/* Secondary button style (Music Wall button on welcome screen) */
+.btn-secondary {
+    background-color: #5d429a;
+    margin-top: 10px;
+}
+
+.btn-secondary:hover {
+    background-color: #4a3580;
+}
+
+/* Add Song Form */
+.add-song-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.add-song-row {
+    display: flex;
+    gap: 10px;
+}
+
+.add-song-row input {
+    flex: 1;
+}
+
+.add-song-btn {
+    padding: 12px 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Error message */
+.song-error {
+    color: #e83e8c;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* Songs Grid */
+.songs-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.songs-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.songs-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.songs-grid::-webkit-scrollbar-thumb {
+    background: rgba(232, 62, 140, 0.4);
+    border-radius: 3px;
+}
+
+/* Individual Song Card */
+.song-card {
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.song-card iframe {
+    border-radius: 10px;
+    width: 100%;
+}
+
+.song-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 0.8em;
+    color: #5d429a;
+}
+
+.song-note {
+    font-style: italic;
+    color: #555;
+    font-size: 0.85em;
+    margin-top: 6px;
+    text-align: left;
+}
+
+/* Loading state */
+.loading-songs {
+    text-align: center;
+    padding: 20px;
+    color: #5d429a;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .music-wall-container {
+        max-width: 100%;
+    }
+
+    .add-song-row {
+        flex-direction: column;
+    }
+}

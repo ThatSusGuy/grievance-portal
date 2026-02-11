@@ -19,6 +19,7 @@
             <p>As requested, you can submit your mere hungry rants for my viewing pleasure.</p>
             <p id="days-counter" class="days-text"></p>
             <button id="enter-btn">Enter</button>
+            <button id="music-wall-btn" class="btn-secondary">Our Music Wall 🎵</button>
         </div>
     </main>
 
@@ -50,6 +51,49 @@
                 
                 <button type="submit">Submit ❤️</button>
             </form>
+        </div>
+    </main>
+
+    <!-- ======== Music Wall Screen ======== -->
+    <main id="music-wall-screen" class="screen" style="display: none;">
+        <div class="container music-wall-container">
+            <button id="music-wall-back-btn" class="back-btn">&larr; Back</button>
+            <h2>Our Music Wall 🎵</h2>
+            <p class="small-text">Songs we want to share with each other</p>
+
+            <!-- Add Song Form -->
+            <form id="add-song-form" class="add-song-form">
+                <input
+                    type="url"
+                    id="song-url"
+                    placeholder="Paste an Apple Music link..."
+                    required
+                >
+                <div class="add-song-row">
+                    <input
+                        type="text"
+                        id="song-added-by"
+                        placeholder="From who? 💕"
+                        required
+                        maxlength="30"
+                    >
+                    <button type="submit" class="add-song-btn">Add 🎶</button>
+                </div>
+                <input
+                    type="text"
+                    id="song-note"
+                    placeholder="A little note... (optional)"
+                    maxlength="100"
+                >
+            </form>
+
+            <!-- Error message area -->
+            <p id="song-error" class="song-error" style="display: none;"></p>
+
+            <!-- Songs Grid -->
+            <div id="songs-grid" class="songs-grid">
+                <p id="no-songs-msg" class="small-text">No songs yet. Be the first to add one! 🎧</p>
+            </div>
         </div>
     </main>
 
