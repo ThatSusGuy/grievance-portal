@@ -16,7 +16,7 @@
  * 12. Copy the Web app URL and paste it into script.js as APPS_SCRIPT_URL
  */
 
-const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID';
+const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
 
 function doGet(e) {
   var action = e.parameter.action;
