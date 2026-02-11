@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Google Sheets Apps Script URL ---
     // Replace this with your deployed Apps Script web app URL
-    const APPS_SCRIPT_URL = 'YOUR_DEPLOYED_APPS_SCRIPT_URL';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxylONlZBEmsCjCuV-8bz8FeMBVZ1Jv0x3xVHylEUZLYek6dfvxbE7IwgTHhuRs-OXZ/exec';
 
     // Music Wall references
     const musicWallScreen = document.getElementById('music-wall-screen');
@@ -278,5 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.textContent = 'Add 🎶';
             });
     });
+
 
 });
