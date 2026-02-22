@@ -1,6 +1,53 @@
 // Wait for the entire page to load before running the script
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- Authentication ---
+    const VALID_CREDENTIALS = [
+        '3d521a28dfc7c84eeb5a3576dc9a91f8f923212e0cd59fb2cf88a0205f41eb45',
+        '06d7a752c43d291b61fc5a62ab01051beabdde53375e553cdd2b9139628ab21d'
+    ];
+
+    async function hashCredentials(username, password) {
+        const str = username.toLowerCase() + ':' + password;
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+    }
+
+    function unlockSite() {
+        document.body.classList.remove('locked');
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('welcome-screen').style.display = 'flex';
+    }
+
+    // Check for existing session
+    if (sessionStorage.getItem('authenticated') === 'true') {
+        unlockSite();
+    }
+
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+
+    loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const hash = await hashCredentials(username, password);
+
+        if (VALID_CREDENTIALS.includes(hash)) {
+            sessionStorage.setItem('authenticated', 'true');
+            loginError.textContent = '';
+            unlockSite();
+        } else {
+            loginError.textContent = 'Incorrect username or password.';
+            document.getElementById('login-password').value = '';
+        }
+    });
+
     // Initialize EmailJS with your Public Key
     (function(){
         emailjs.init("PoB9fcQiaekD1g8OI"); // ⚠️ PASTE YOUR PUBLIC KEY HERE

@@ -10,10 +10,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="locked">
+
+    <!-- ======== Login Screen ======== -->
+    <main id="login-screen" class="screen">
+        <div class="container">
+            <h2>Welcome</h2>
+            <p>Please log in to continue.</p>
+            <form id="login-form">
+                <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
+                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                <p id="login-error"></p>
+                <button type="submit">Log In</button>
+            </form>
+        </div>
+    </main>
 
     <!-- ======== Welcome Screen ======== -->
-    <main id="welcome-screen" class="screen">
+    <main id="welcome-screen" class="screen" style="display: none;">
         <div class="container">
             <h1>Welcome to your very own Grievance Portal, babylove.</h1>
             <p>As requested, you can submit your mere hungry rants for my viewing pleasure.</p>

@@ -18,6 +18,12 @@ body {
     padding: 20px;
 }
 
+/* Login lock state — hides background for privacy */
+body.locked {
+    background-image: none;
+    background-color: #1a1a2e;
+}
+
 /* Screen container to center content */
 .screen {
     width: 100%;
@@ -243,4 +249,42 @@ button:hover {
     .add-song-row {
         flex-direction: column;
     }
+}
+
+/* ======== Login Screen Styles ======== */
+
+#login-screen .container {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#login-screen h2 {
+    color: #e83e8c;
+}
+
+#login-screen p {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#login-form input {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+#login-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#login-error {
+    color: #ff6b9d;
+    font-size: 0.9em;
+    min-height: 1.2em;
+    margin: 0;
 }
