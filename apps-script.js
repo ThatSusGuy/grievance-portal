@@ -1,19 +1,20 @@
 /**
- * Google Apps Script — Music Wall Backend
+ * Google Apps Script — Grievance Portal Backend
  *
  * SETUP INSTRUCTIONS:
  * 1. Create a new Google Sheet
- * 2. Add these headers in row 1: url | embedUrl | addedBy | note | timestamp
- * 3. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
- * 4. Paste it below in SHEET_ID
- * 5. In the Google Sheet, go to Extensions > Apps Script
- * 6. Paste this entire file into the script editor (replace any existing code)
- * 7. Click Deploy > New deployment
- * 8. Select type: Web app
- * 9. Set "Execute as": Me
- * 10. Set "Who has access": Anyone
- * 11. Click Deploy and authorize when prompted
- * 12. Copy the Web app URL and paste it into script.js as APPS_SCRIPT_URL
+ * 2. On the first sheet tab (for Music Wall), add headers in row 1:
+ *    url | embedUrl | addedBy | note | timestamp
+ * 3. Create a second sheet tab called "Users" with headers in row 1:
+ *    username | password
+ *    Then add your two username/password combos in rows 2 and 3.
+ * 4. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
+ * 5. Paste it below in SHEET_ID
+ * 6. In the Google Sheet, go to Extensions > Apps Script
+ * 7. Paste this entire file into the script editor (replace any existing code)
+ * 8. Click Deploy > Manage deployments > Edit (pencil icon)
+ * 9. Set version to "New version" and click Deploy
+ * 10. Copy the Web app URL and paste it into script.js as APPS_SCRIPT_URL
  */
 
 const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
@@ -21,11 +22,40 @@ const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
 function doGet(e) {
   var action = e.parameter.action;
 
-  if (action === 'add') {
+  if (action === 'login') {
+    return validateLogin(e.parameter);
+  } else if (action === 'add') {
     return addSong(e.parameter);
   } else {
     return getSongs();
   }
+}
+
+function validateLogin(params) {
+  var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+  var usersSheet = spreadsheet.getSheetByName('Users');
+
+  if (!usersSheet) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Users sheet not found' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var data = usersSheet.getDataRange().getValues();
+  var username = (params.username || '').trim().toLowerCase();
+  var password = params.password || '';
+
+  for (var i = 1; i < data.length; i++) {
+    var storedUser = String(data[i][0]).trim().toLowerCase();
+    var storedPass = String(data[i][1]).trim();
+
+    if (storedUser === username && storedPass === password) {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Invalid credentials' }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function getSongs() {

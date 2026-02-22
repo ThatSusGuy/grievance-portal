@@ -12,8 +12,22 @@
 </head>
 <body>
 
+    <!-- ======== Login Screen ======== -->
+    <main id="login-screen" class="screen">
+        <div class="container login-container">
+            <h1>🔒</h1>
+            <p>This portal is private.</p>
+            <form id="login-form">
+                <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
+                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                <p id="login-error" class="login-error" style="display: none;">Wrong username or password.</p>
+                <button type="submit">Enter</button>
+            </form>
+        </div>
+    </main>
+
     <!-- ======== Welcome Screen ======== -->
-    <main id="welcome-screen" class="screen">
+    <main id="welcome-screen" class="screen" style="display: none;">
         <div class="container">
             <h1>Welcome to your very own Grievance Portal, babylove.</h1>
             <p>As requested, you can submit your mere hungry rants for my viewing pleasure.</p>
