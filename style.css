@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Nunito', sans-serif;
-    background-image: url('images/background.jpg');
+    background-color: #1a1a2e;
     background-size: cover;
     background-position: center;
     color: #333;
@@ -16,6 +16,12 @@ body {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
+    transition: background-color 0.5s ease;
+}
+
+body.authenticated {
+    background-image: url('images/background.jpg');
+    background-color: transparent;
 }
 
 /* Screen container to center content */
@@ -38,6 +44,53 @@ body {
     width: 100%;
     max-width: 400px;
     text-align: center;
+}
+
+/* ======== Login Screen Styles ======== */
+.login-container {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    max-width: 360px;
+}
+
+.login-container h1 {
+    color: white;
+    font-size: 2.5em;
+    margin-bottom: 5px;
+}
+
+.login-container p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95em;
+    margin-bottom: 20px;
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#login-form input {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 14px;
+}
+
+#login-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#login-form input:focus {
+    outline: none;
+    border-color: #e83e8c;
+}
+
+.login-error {
+    color: #ff6b9d;
+    font-size: 0.85em;
+    margin: 0;
 }
 
 /* Typography */

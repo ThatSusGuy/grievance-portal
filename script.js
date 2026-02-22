@@ -6,41 +6,95 @@ document.addEventListener('DOMContentLoaded', () => {
         emailjs.init("PoB9fcQiaekD1g8OI"); // ⚠️ PASTE YOUR PUBLIC KEY HERE
     })();
 
+    // --- Google Sheets Apps Script URL ---
+    // Replace this with your deployed Apps Script web app URL
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxylONlZBEmsCjCuV-8bz8FeMBVZ1Jv0x3xVHylEUZLYek6dfvxbE7IwgTHhuRs-OXZ/exec';
+
+    // --- Get references to all screens ---
+    const loginScreen = document.getElementById('login-screen');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const formScreen = document.getElementById('form-screen');
+    const thanksScreen = document.getElementById('thanks-screen');
+    const musicWallScreen = document.getElementById('music-wall-screen');
+
+    // --- Login Logic ---
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+
+    function showApp() {
+        loginScreen.style.display = 'none';
+        document.body.classList.add('authenticated');
+        welcomeScreen.style.display = 'flex';
+    }
+
+    // Check if already logged in this session
+    if (sessionStorage.getItem('authenticated') === 'true') {
+        showApp();
+    }
+
+    loginForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        loginError.style.display = 'none';
+
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Checking...';
+
+        const params = new URLSearchParams({
+            action: 'login',
+            username: username,
+            password: password
+        });
+
+        fetch(APPS_SCRIPT_URL + '?' + params.toString())
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    sessionStorage.setItem('authenticated', 'true');
+                    showApp();
+                } else {
+                    loginError.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Enter';
+                }
+            })
+            .catch(() => {
+                loginError.textContent = 'Something went wrong. Try again.';
+                loginError.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enter';
+            });
+    });
+
     // --- Days Counter Logic ---
     const startDate = new Date('2023-01-05T00:00:00'); // Your start date (Jan 5, 2023)
     const today = new Date();
-    
+
     // Calculate the difference in milliseconds
     const differenceInMs = today - startDate;
-    
+
     // Convert milliseconds to days (1000ms * 60s * 60min * 24hr)
     const msPerDay = 1000 * 60 * 60 * 24;
     const differenceInDays = Math.floor(differenceInMs / msPerDay);
 
     // Add 1 to make it inclusive
     const inclusiveDays = differenceInDays + 1;
-    
+
     // Find the element on the page
     const counterElement = document.getElementById('days-counter');
-    
+
     // We use innerHTML here to allow the <br> tag to create a line break.
     counterElement.innerHTML = `Today is day ${inclusiveDays}/∞ of our beautiful, crazy journey.<br><br>(Your man knows his numbers 😉)`;
 
-    // Get references to all the elements we need to work with
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const formScreen = document.getElementById('form-screen');
-    const thanksScreen = document.getElementById('thanks-screen');
-
+    // Get references to buttons and forms
     const enterBtn = document.getElementById('enter-btn');
     const grievanceForm = document.getElementById('grievance-form');
     const submitAnotherBtn = document.getElementById('submit-another-btn');
 
-    // --- Google Sheets Apps Script URL ---
-    // Replace this with your deployed Apps Script web app URL
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxylONlZBEmsCjCuV-8bz8FeMBVZ1Jv0x3xVHylEUZLYek6dfvxbE7IwgTHhuRs-OXZ/exec';
-
     // Music Wall references
-    const musicWallScreen = document.getElementById('music-wall-screen');
     const musicWallBtn = document.getElementById('music-wall-btn');
     const musicWallBackBtn = document.getElementById('music-wall-back-btn');
     const addSongForm = document.getElementById('add-song-form');
