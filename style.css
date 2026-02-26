@@ -287,13 +287,135 @@ button:hover {
     color: #5d429a;
 }
 
+/* ======== Love Notes / Messages Screen Styles ======== */
+
+.messages-container {
+    max-width: 600px;
+}
+
+.messages-error {
+    color: #e83e8c;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* Category Selection Area */
+.categories-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.category-btn {
+    padding: 14px 20px;
+    border: 1px solid rgba(93, 66, 154, 0.2);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(232, 62, 140, 0.15), rgba(93, 66, 154, 0.15));
+    color: #5d429a;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 140px;
+    animation: fadeInUp 0.3s ease-out both;
+}
+
+.category-btn:hover {
+    background: linear-gradient(135deg, rgba(232, 62, 140, 0.3), rgba(93, 66, 154, 0.3));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(93, 66, 154, 0.2);
+    color: #5d429a;
+}
+
+.category-btn:active {
+    transform: translateY(0);
+}
+
+/* Message Display Area */
+.message-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.message-card {
+    background: linear-gradient(135deg, rgba(232, 62, 140, 0.1), rgba(93, 66, 154, 0.1));
+    border: 1px solid rgba(232, 62, 140, 0.2);
+    border-radius: 16px;
+    padding: 25px 20px;
+    width: 100%;
+    animation: messageReveal 0.5s ease-out;
+}
+
+.message-category-label {
+    font-size: 0.8em;
+    color: #5d429a;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+.message-text {
+    font-size: 1.25em;
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 0;
+}
+
+.message-display > button {
+    width: 100%;
+}
+
+.pick-category-btn {
+    margin-top: 0;
+}
+
+@keyframes messageReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
-    .music-wall-container {
+    .music-wall-container,
+    .messages-container {
         max-width: 100%;
     }
 
     .add-song-row {
         flex-direction: column;
+    }
+
+    .category-btn {
+        min-width: 120px;
+        flex: 1 1 calc(50% - 12px);
+    }
+
+    .message-text {
+        font-size: 1.1em;
     }
 }

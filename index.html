@@ -34,6 +34,7 @@
             <p id="days-counter" class="days-text"></p>
             <button id="enter-btn">Enter</button>
             <button id="music-wall-btn" class="btn-secondary">Our Music Wall 🎵</button>
+            <button id="love-notes-btn" class="btn-secondary">Love Notes 💌</button>
         </div>
     </main>
 
@@ -107,6 +108,30 @@
             <!-- Songs Grid -->
             <div id="songs-grid" class="songs-grid">
                 <p id="no-songs-msg" class="small-text">No songs yet. Be the first to add one! 🎧</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ======== Love Notes Screen ======== -->
+    <main id="messages-screen" class="screen" style="display: none;">
+        <div class="container messages-container">
+            <button id="messages-back-btn" class="back-btn">&larr; Back</button>
+            <h2>Love Notes 💌</h2>
+            <p class="small-text">Pick a category and get a little surprise</p>
+
+            <p id="messages-error" class="messages-error" style="display: none;"></p>
+
+            <div id="categories-area" class="categories-area">
+                <p id="categories-loading" class="small-text">Loading categories...</p>
+            </div>
+
+            <div id="message-display" class="message-display" style="display: none;">
+                <div class="message-card">
+                    <p id="message-category-label" class="message-category-label"></p>
+                    <p id="message-text" class="message-text"></p>
+                </div>
+                <button id="another-message-btn">Show Another 💝</button>
+                <button id="pick-category-btn" class="btn-secondary pick-category-btn">Pick a Category</button>
             </div>
         </div>
     </main>

@@ -26,6 +26,8 @@ function doGet(e) {
     return validateLogin(e.parameter);
   } else if (action === 'add') {
     return addSong(e.parameter);
+  } else if (action === 'getMessages') {
+    return getMessages();
   } else {
     return getSongs();
   }
@@ -99,4 +101,46 @@ function addSong(params) {
 
   return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getMessages() {
+  var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+  var messagesSheet = spreadsheet.getSheetByName('Messages');
+
+  if (!messagesSheet) {
+    return ContentService.createTextOutput(JSON.stringify({
+      categories: [],
+      messages: {}
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var data = messagesSheet.getDataRange().getValues();
+
+  if (data.length <= 1) {
+    return ContentService.createTextOutput(JSON.stringify({
+      categories: [],
+      messages: {}
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var messagesMap = {};
+
+  for (var i = 1; i < data.length; i++) {
+    var category = String(data[i][0]).trim();
+    var message = String(data[i][1]).trim();
+
+    if (category && message) {
+      if (!messagesMap[category]) {
+        messagesMap[category] = [];
+      }
+      messagesMap[category].push(message);
+    }
+  }
+
+  var categories = Object.keys(messagesMap);
+
+  return ContentService.createTextOutput(JSON.stringify({
+    categories: categories,
+    messages: messagesMap
+  })).setMimeType(ContentService.MimeType.JSON);
 }
