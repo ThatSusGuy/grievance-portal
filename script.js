@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formScreen = document.getElementById('form-screen');
     const thanksScreen = document.getElementById('thanks-screen');
     const musicWallScreen = document.getElementById('music-wall-screen');
+    const messagesScreen = document.getElementById('messages-screen');
 
     // --- Login Logic ---
     const loginForm = document.getElementById('login-form');
@@ -105,6 +106,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const noSongsMsg = document.getElementById('no-songs-msg');
     const songError = document.getElementById('song-error');
 
+    // Love Notes references
+    const loveNotesBtn = document.getElementById('love-notes-btn');
+    const messagesBackBtn = document.getElementById('messages-back-btn');
+    const categoriesArea = document.getElementById('categories-area');
+    const categoriesLoading = document.getElementById('categories-loading');
+    const messageDisplay = document.getElementById('message-display');
+    const messageCategoryLabel = document.getElementById('message-category-label');
+    const messageText = document.getElementById('message-text');
+    const anotherMessageBtn = document.getElementById('another-message-btn');
+    const pickCategoryBtn = document.getElementById('pick-category-btn');
+    const messagesError = document.getElementById('messages-error');
+
+    let messagesData = null;
+    let currentCategory = null;
+
     // --- EVENT LISTENERS ---
 
     // 1. When the "Enter" button is clicked on the welcome screen
@@ -171,6 +187,120 @@ document.addEventListener('DOMContentLoaded', () => {
     musicWallBackBtn.addEventListener('click', () => {
         musicWallScreen.style.display = 'none';
         welcomeScreen.style.display = 'flex';
+    });
+
+    // --- LOVE NOTES ---
+
+    // When the "Love Notes" button is clicked on the welcome screen
+    loveNotesBtn.addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        messagesScreen.style.display = 'flex';
+        showCategoriesView();
+        fetchMessages();
+    });
+
+    // When the "Back" button is clicked on the messages screen
+    messagesBackBtn.addEventListener('click', () => {
+        messagesScreen.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+    });
+
+    function showMessagesError(message) {
+        messagesError.textContent = message;
+        messagesError.style.display = 'block';
+        setTimeout(() => {
+            messagesError.style.display = 'none';
+        }, 5000);
+    }
+
+    function showCategoriesView() {
+        messageDisplay.style.display = 'none';
+        categoriesArea.style.display = 'flex';
+        currentCategory = null;
+    }
+
+    function fetchMessages() {
+        if (messagesData) {
+            renderCategories(messagesData.categories);
+            return;
+        }
+
+        categoriesArea.innerHTML = '';
+        categoriesLoading.textContent = 'Loading categories...';
+        categoriesArea.appendChild(categoriesLoading);
+        categoriesLoading.style.display = 'block';
+
+        fetch(APPS_SCRIPT_URL + '?action=getMessages')
+            .then(response => response.json())
+            .then(data => {
+                messagesData = data;
+
+                if (!data.categories || data.categories.length === 0) {
+                    categoriesLoading.textContent = 'No messages yet. Check back later! 💭';
+                    categoriesLoading.style.display = 'block';
+                    return;
+                }
+
+                renderCategories(data.categories);
+            })
+            .catch(error => {
+                console.error('Error fetching messages:', error);
+                categoriesLoading.textContent = 'Could not load messages. Please try again later.';
+                categoriesLoading.style.display = 'block';
+            });
+    }
+
+    function renderCategories(categories) {
+        categoriesArea.innerHTML = '';
+
+        categories.forEach((category, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'category-btn';
+            btn.textContent = category;
+            btn.style.animationDelay = (index * 0.05) + 's';
+
+            btn.addEventListener('click', () => {
+                selectCategory(category);
+            });
+
+            categoriesArea.appendChild(btn);
+        });
+    }
+
+    function selectCategory(category) {
+        currentCategory = category;
+        categoriesArea.style.display = 'none';
+        messageDisplay.style.display = 'flex';
+        showRandomMessage();
+    }
+
+    function showRandomMessage() {
+        if (!messagesData || !currentCategory) return;
+
+        const categoryMessages = messagesData.messages[currentCategory];
+        if (!categoryMessages || categoryMessages.length === 0) {
+            messageText.textContent = 'No messages in this category yet.';
+            messageCategoryLabel.textContent = currentCategory;
+            return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * categoryMessages.length);
+        messageCategoryLabel.textContent = currentCategory;
+        messageText.textContent = categoryMessages[randomIndex];
+
+        // Re-trigger the CSS animation
+        const card = messageText.closest('.message-card');
+        card.style.animation = 'none';
+        card.offsetHeight; // force reflow
+        card.style.animation = '';
+    }
+
+    anotherMessageBtn.addEventListener('click', () => {
+        showRandomMessage();
+    });
+
+    pickCategoryBtn.addEventListener('click', () => {
+        showCategoriesView();
     });
 
     // --- Apple Music URL Parser ---
