@@ -367,6 +367,7 @@ button:hover {
     color: #333;
     line-height: 1.6;
     margin-bottom: 0;
+    white-space: pre-line;
 }
 
 .message-display > button {
