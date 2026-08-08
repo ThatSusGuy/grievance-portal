@@ -56,6 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(result => {
                 if (result.status === 'success') {
                     sessionStorage.setItem('authenticated', 'true');
+                    // Remember who logged in so new songs are attributed properly
+                    sessionStorage.setItem('portalUser', username.toLowerCase());
                     showApp();
                 } else {
                     loginError.style.display = 'block';
@@ -1131,7 +1133,8 @@ document.addEventListener('DOMContentLoaded', () => {
             url: parsed.originalUrl,
             embedUrl: parsed.embedUrl,
             addedBy: addedBy,
-            note: note
+            note: note,
+            user: sessionStorage.getItem('portalUser') || ''
         });
 
         fetch(APPS_SCRIPT_URL + '?' + params.toString())

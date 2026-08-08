@@ -26,6 +26,23 @@
 
 const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
 
+// ── Stats page config ──────────────────────────────────────────────
+// Login usernames, exactly as they appear in the Users sheet
+// (case doesn't matter)
+var HER_USERNAME = 'baby';   // ⚠️ REPLACE with her real login username
+var HIS_USERNAME = 'daddy';  // ⚠️ REPLACE with your real login username
+
+// Music Tug-of-War baseline: songs added before per-user tracking
+// existed. New songs are counted automatically via the logged-in user.
+var SONG_BASELINE = {};
+SONG_BASELINE[HER_USERNAME] = 4;
+SONG_BASELINE[HIS_USERNAME] = 1;
+
+// How the names appear on the stats page
+var SONG_DISPLAY = {};
+SONG_DISPLAY[HER_USERNAME] = 'Baby 💕';
+SONG_DISPLAY[HIS_USERNAME] = 'Daddy 😎';
+
 function doGet(e) {
   var action = e.parameter.action;
 
@@ -112,19 +129,33 @@ function getStats() {
   // --- Songs (first sheet tab, full history) ---
   var songsData = spreadsheet.getSheets()[0].getDataRange().getValues();
   var songTotal = 0;
+  var lastAdded = '';
+
+  // The tug-of-war starts from the manual baseline (pre-tracking
+  // history), then adds rows attributed via the logged-in user column
+  var displayByKey = {};
+  Object.keys(SONG_DISPLAY).forEach(function (name) {
+    displayByKey[name.toLowerCase()] = SONG_DISPLAY[name];
+  });
+
   var contributorCounts = {};
   var contributorNames = {};
-  var lastAdded = '';
+  Object.keys(SONG_BASELINE).forEach(function (name) {
+    var nameKey = name.toLowerCase();
+    contributorCounts[nameKey] = SONG_BASELINE[name];
+    contributorNames[nameKey] = displayByKey[nameKey] || name;
+  });
 
   for (var i = 1; i < songsData.length; i++) {
     if (!songsData[i][0]) continue;
     songTotal++;
 
-    var addedBy = String(songsData[i][2] || '').trim();
-    if (addedBy) {
-      var nameKey = addedBy.toLowerCase();
-      contributorCounts[nameKey] = (contributorCounts[nameKey] || 0) + 1;
-      if (!contributorNames[nameKey]) contributorNames[nameKey] = addedBy;
+    var user = String(songsData[i][5] || '').trim().toLowerCase();
+    if (user) {
+      contributorCounts[user] = (contributorCounts[user] || 0) + 1;
+      if (!contributorNames[user]) {
+        contributorNames[user] = displayByKey[user] || String(songsData[i][5]).trim();
+      }
     }
 
     var ts = toIsoString(songsData[i][4]);
@@ -249,12 +280,18 @@ function getSongs() {
 function addSong(params) {
   var sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
 
+  // Make sure the 'user' header exists (column F was added later)
+  if (!String(sheet.getRange(1, 6).getValue())) {
+    sheet.getRange(1, 6).setValue('user');
+  }
+
   sheet.appendRow([
     params.url,
     params.embedUrl,
     params.addedBy,
     params.note || '',
-    new Date().toISOString()
+    new Date().toISOString(),
+    params.user || ''
   ]);
 
   return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
