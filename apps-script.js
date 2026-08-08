@@ -10,8 +10,8 @@
  *    Then add your two username/password combos in rows 2 and 3.
  * 3b. Create a sheet tab called "Game" with headers in row 1:
  *    word | hint
- *    Add a row with the secret word (and an optional hint) — the LAST
- *    row is always the active word, so just add a new row to change it.
+ *    Add one row per secret word (with an optional hint). The portal
+ *    picks a random word from the list for each new game.
  * 4. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
  * 5. Paste it below in SHEET_ID
  * 6. In the Google Sheet, go to Extensions > Apps Script
@@ -113,29 +113,27 @@ function getGameWord() {
   var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
   var gameSheet = spreadsheet.getSheetByName('Game');
 
-  var empty = JSON.stringify({ word: '', hint: '' });
-
   if (!gameSheet) {
-    return ContentService.createTextOutput(empty)
+    return ContentService.createTextOutput(JSON.stringify({ words: [] }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
   var data = gameSheet.getDataRange().getValues();
+  var words = [];
 
-  // The active word is the last row that has a non-empty word
-  for (var i = data.length - 1; i >= 1; i--) {
+  for (var i = 1; i < data.length; i++) {
     var word = String(data[i][0]).trim();
     if (word) {
-      // Base64-encode the word so it can't be read at a glance
+      // Base64-encode each word so they can't be read at a glance
       // in the browser's network tab (light obfuscation, not security)
-      return ContentService.createTextOutput(JSON.stringify({
+      words.push({
         word: Utilities.base64Encode(word, Utilities.Charset.UTF_8),
         hint: String(data[i][1] || '').trim()
-      })).setMimeType(ContentService.MimeType.JSON);
+      });
     }
   }
 
-  return ContentService.createTextOutput(empty)
+  return ContentService.createTextOutput(JSON.stringify({ words: words }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

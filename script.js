@@ -354,25 +354,44 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(APPS_SCRIPT_URL + '?action=getGameWord')
             .then(response => response.json())
             .then(data => {
-                if (!data.word) {
+                const words = (data.words || []).filter(entry => {
+                    return decodeGameWord(entry.word).answer.length > 0;
+                });
+
+                if (words.length === 0) {
                     wordGameLoading.textContent = 'No secret word set yet! Tell your man to pick one 😤';
                     return;
                 }
 
-                // Decode the base64 word (UTF-8 safe); multi-word answers
-                // are split into groups shown with a gap, like Wordle spinoffs
-                const decoded = decodeURIComponent(escape(atob(data.word))).toUpperCase();
-                gameWordParts = decoded.split(/[^A-Z]+/).filter(part => part.length > 0);
-                gameAnswer = gameWordParts.join('');
+                // Resume an unfinished game; otherwise pick a random word,
+                // avoiding the one she just played (like the Love Notes shuffle)
+                const currentB64 = localStorage.getItem('wordGameActive');
+                let chosen = null;
 
-                if (!gameAnswer) {
-                    wordGameLoading.textContent = 'No secret word set yet! Tell your man to pick one 😤';
-                    return;
+                const currentEntry = words.find(entry => entry.word === currentB64);
+                if (currentEntry) {
+                    const savedState = loadSavedState(currentB64);
+                    const answer = decodeGameWord(currentB64).answer;
+                    if (savedState && savedState.guesses.length > 0 &&
+                        !isFinishedState(savedState, answer)) {
+                        chosen = currentEntry;
+                    }
                 }
 
-                gameStorageKey = 'wordGame_' + data.word;
+                if (!chosen) {
+                    const pool = words.length > 1
+                        ? words.filter(entry => entry.word !== currentB64)
+                        : words;
+                    chosen = pool[Math.floor(Math.random() * pool.length)];
+                }
 
-                // Forget saved progress from older words
+                const decoded = decodeGameWord(chosen.word);
+                gameWordParts = decoded.parts;
+                gameAnswer = decoded.answer;
+                gameStorageKey = 'wordGame_' + chosen.word;
+                localStorage.setItem('wordGameActive', chosen.word);
+
+                // Forget saved progress from other words
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
                     if (key && key.indexOf('wordGame_') === 0 && key !== gameStorageKey) {
@@ -380,19 +399,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                let savedState = null;
-                try {
-                    savedState = JSON.parse(localStorage.getItem(gameStorageKey));
-                } catch (e) { /* corrupt or old-format state, start fresh */ }
-                gameState = savedState && Array.isArray(savedState.guesses)
-                    ? savedState
-                    : { guesses: [], revealed: false };
+                gameState = loadSavedState(chosen.word) || { guesses: [], revealed: false };
 
                 currentGuess = '';
                 justSubmittedRow = -1;
 
-                if (data.hint) {
-                    wordGameHint.textContent = 'Hint: ' + data.hint;
+                if (chosen.hint) {
+                    wordGameHint.textContent = 'Hint: ' + chosen.hint;
                     wordGameHint.style.display = 'block';
                 } else {
                     wordGameHint.style.display = 'none';
@@ -407,6 +420,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching game word:', error);
                 wordGameLoading.textContent = 'Could not load the game. Please try again later.';
             });
+    }
+
+    // Decode a base64 word (UTF-8 safe) into letter groups + joined answer
+    function decodeGameWord(b64) {
+        let decoded = '';
+        try {
+            decoded = decodeURIComponent(escape(atob(b64))).toUpperCase();
+        } catch (e) { /* bad data in the sheet, treat as empty */ }
+        const parts = decoded.split(/[^A-Z]+/).filter(part => part.length > 0);
+        return { parts: parts, answer: parts.join('') };
+    }
+
+    function loadSavedState(b64) {
+        try {
+            const parsed = JSON.parse(localStorage.getItem('wordGame_' + b64));
+            if (parsed && Array.isArray(parsed.guesses)) return parsed;
+        } catch (e) { /* corrupt or old-format state */ }
+        return null;
+    }
+
+    function isFinishedState(state, answer) {
+        return state.revealed ||
+            state.guesses.indexOf(answer) !== -1 ||
+            state.guesses.length >= MAX_GUESSES;
     }
 
     function saveGameState() {
