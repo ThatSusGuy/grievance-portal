@@ -707,8 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderGame();
     }
 
-    // Log a finished game to the sheet for the stats page (once per game)
+    // Log a finished game to the sheet for the stats page (once per game).
+    // Only her games count — daddy's test runs stay off the books 😎
     function logGameResult(result) {
+        if (sessionStorage.getItem('portalUser') !== 'babyyy') return;
         if (!gameState || !gameStorageKey) return;
         if (result !== 'begged') {
             if (gameState.logged) return;
