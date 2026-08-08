@@ -146,7 +146,18 @@ document.addEventListener('DOMContentLoaded', () => {
             mood: document.getElementById('mood').value,
             severity: document.getElementById('severity').value,
         };
-        
+
+        // Also log it to the sheet for the stats page (fire-and-forget:
+        // the email goes through even if this fails)
+        const logParams = new URLSearchParams({
+            action: 'logGrievance',
+            title: templateParams.title,
+            mood: templateParams.mood,
+            severity: templateParams.severity
+        });
+        fetch(APPS_SCRIPT_URL + '?' + logParams.toString()).catch(() => {});
+
+
         // Use EmailJS to send the email
         emailjs.send('service_t6m8a9b', 'grievance', templateParams) // ⚠️ PASTE YOUR TEMPLATE ID HERE
             .then(function(response) {
@@ -683,8 +694,32 @@ document.addEventListener('DOMContentLoaded', () => {
         justSubmittedRow = gameState.guesses.length;
         gameState.guesses.push(currentGuess);
         currentGuess = '';
+
+        if (isGameWon()) {
+            logGameResult('won');
+        } else if (isGameLost()) {
+            logGameResult('lost');
+        }
+
         saveGameState();
         renderGame();
+    }
+
+    // Log a finished game to the sheet for the stats page (once per game)
+    function logGameResult(result) {
+        if (!gameState || !gameStorageKey) return;
+        if (result !== 'begged') {
+            if (gameState.logged) return;
+            gameState.logged = true;
+        }
+
+        const params = new URLSearchParams({
+            action: 'logGame',
+            word: gameStorageKey.slice('wordGame_'.length),
+            result: result,
+            guesses: gameState.guesses.length
+        });
+        fetch(APPS_SCRIPT_URL + '?' + params.toString()).catch(() => {});
     }
 
     // Physical keyboard support while the game screen is open
@@ -725,10 +760,237 @@ document.addEventListener('DOMContentLoaded', () => {
 
     revealYesBtn.addEventListener('click', () => {
         revealConfirm.style.display = 'none';
+        // A beg after a loss logs 'begged' (the game already logged 'lost');
+        // a mid-game beg ends the game as 'revealed'
+        logGameResult(gameState.logged ? 'begged' : 'revealed');
         gameState.revealed = true;
         saveGameState();
         renderGame();
     });
+
+    // --- STATS PAGE ---
+
+    const statsScreen = document.getElementById('stats-screen');
+    const statsBtn = document.getElementById('stats-btn');
+    const statsBackBtn = document.getElementById('stats-back-btn');
+    const statsLoading = document.getElementById('stats-loading');
+    const statsError = document.getElementById('stats-error');
+    const statsContent = document.getElementById('stats-content');
+    const moodBars = document.getElementById('mood-bars');
+    const severityBars = document.getElementById('severity-bars');
+    const couchCount = document.getElementById('couch-count');
+    const songSplit = document.getElementById('song-split');
+    const gameChips = document.getElementById('game-chips');
+
+    // Short labels for the long severity options, in escalating order
+    const SEVERITY_LABELS = [
+        ['omgg drooling over my handsome and sexy hunk boyfriend', 'drooling 😍'],
+        ['A cute bournville would fix this 🥰', 'bournville fix 🥰'],
+        ['I need a hug... NOW 🥺', 'need a hug 🥺'],
+        ['Where my man at 😔', 'where my man 😔'],
+        ["You're sleeping on the couch 😡", 'the couch 😡'],
+        ['Hell hath no fury like me today 🙂', 'hell hath no fury 🙂']
+    ];
+
+    statsBtn.addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        statsScreen.style.display = 'flex';
+        fetchStats();
+    });
+
+    statsBackBtn.addEventListener('click', () => {
+        statsScreen.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+    });
+
+    function fetchStats() {
+        statsContent.style.display = 'none';
+        statsError.style.display = 'none';
+        statsLoading.style.display = 'block';
+
+        fetch(APPS_SCRIPT_URL + '?action=getStats')
+            .then(response => response.json())
+            .then(stats => {
+                statsLoading.style.display = 'none';
+                statsContent.style.display = 'flex';
+                renderStats(stats);
+            })
+            .catch(error => {
+                console.error('Error fetching stats:', error);
+                statsLoading.style.display = 'none';
+                statsError.textContent = 'Could not count our everything. Try again later 💔';
+                statsError.style.display = 'block';
+            });
+    }
+
+    // Animate a number counting up from 0
+    function countUp(el, target) {
+        const duration = 1000;
+        let startTime = null;
+
+        function tick(now) {
+            if (startTime === null) startTime = now;
+            const progress = Math.min((now - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(target * eased);
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+
+    function makeBarRow(label, count, maxCount) {
+        const row = document.createElement('div');
+        row.className = 'stat-bar-row';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'stat-bar-label';
+        labelEl.textContent = label;
+        row.appendChild(labelEl);
+
+        const track = document.createElement('div');
+        track.className = 'stat-bar-track';
+        const fill = document.createElement('div');
+        fill.className = 'stat-bar-fill';
+        fill.style.width = '0%';
+        track.appendChild(fill);
+        row.appendChild(track);
+
+        const countEl = document.createElement('span');
+        countEl.className = 'stat-bar-count';
+        countEl.textContent = count;
+        row.appendChild(countEl);
+
+        // Let the row hit the DOM at 0% first so the width animates
+        const percent = maxCount > 0 ? (count / maxCount) * 100 : 0;
+        setTimeout(() => { fill.style.width = percent + '%'; }, 50);
+
+        return row;
+    }
+
+    function emptyNote(text) {
+        const note = document.createElement('p');
+        note.className = 'small-text';
+        note.textContent = text;
+        note.style.marginBottom = '0';
+        return note;
+    }
+
+    function makeChip(value, label) {
+        const chip = document.createElement('div');
+        chip.className = 'game-chip';
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'game-chip-value';
+        valueEl.textContent = value;
+        chip.appendChild(valueEl);
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'game-chip-label';
+        labelEl.textContent = label;
+        chip.appendChild(labelEl);
+
+        return chip;
+    }
+
+    function renderStats(stats) {
+        const songs = stats.songs || { total: 0, contributors: [] };
+        const grievances = stats.grievances || { total: 0, thisMonth: 0, moods: {}, severities: {} };
+        const games = stats.games || { won: 0, lost: 0, revealed: 0, begged: 0, firstTry: 0, winGuessTotal: 0 };
+
+        // Hero tiles
+        countUp(document.getElementById('stat-days'), inclusiveDays);
+        countUp(document.getElementById('stat-grievances'), grievances.total);
+        countUp(document.getElementById('stat-songs'), songs.total);
+        countUp(document.getElementById('stat-wins'), games.won);
+
+        // Mood Meter — most frequent first
+        moodBars.innerHTML = '';
+        const moodEntries = Object.keys(grievances.moods)
+            .map(mood => ({ label: mood, count: grievances.moods[mood] }))
+            .sort((a, b) => b.count - a.count);
+
+        if (moodEntries.length === 0) {
+            moodBars.appendChild(emptyNote('No grievances yet. Suspicious 🤨'));
+        } else {
+            const maxMood = moodEntries[0].count;
+            moodEntries.forEach(entry => {
+                moodBars.appendChild(makeBarRow(entry.label, entry.count, maxMood));
+            });
+        }
+
+        // Drama Scale — fixed escalating order so the shape tells the story
+        severityBars.innerHTML = '';
+        couchCount.style.display = 'none';
+
+        if (grievances.total === 0) {
+            severityBars.appendChild(emptyNote('Zero drama recorded. For now 🤭'));
+        } else {
+            const severityMax = Math.max.apply(null, SEVERITY_LABELS.map(
+                pair => grievances.severities[pair[0]] || 0
+            ));
+            SEVERITY_LABELS.forEach(pair => {
+                severityBars.appendChild(
+                    makeBarRow(pair[1], grievances.severities[pair[0]] || 0, severityMax)
+                );
+            });
+
+            const couchTotal = grievances.severities["You're sleeping on the couch 😡"] || 0;
+            if (couchTotal > 0) {
+                couchCount.textContent = 'Couch sentences served: ' + couchTotal + ' 🛋️😡';
+                couchCount.style.display = 'block';
+            }
+        }
+
+        // Music Tug-of-War
+        songSplit.innerHTML = '';
+        const contributors = songs.contributors || [];
+
+        if (contributors.length === 0) {
+            songSplit.appendChild(emptyNote('No songs on the wall yet 🎧'));
+        } else {
+            const top = contributors.slice(0, 2);
+            const splitTotal = top.reduce((sum, c) => sum + c.count, 0);
+
+            const namesRow = document.createElement('div');
+            namesRow.className = 'split-names';
+            top.forEach(c => {
+                const nameEl = document.createElement('span');
+                nameEl.textContent = c.name + ' · ' + c.count;
+                namesRow.appendChild(nameEl);
+            });
+            songSplit.appendChild(namesRow);
+
+            const bar = document.createElement('div');
+            bar.className = 'split-bar';
+            top.forEach((c, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'split-seg split-seg-' + i;
+                seg.style.width = (c.count / splitTotal) * 100 + '%';
+                bar.appendChild(seg);
+            });
+            songSplit.appendChild(bar);
+        }
+
+        // Game Corner
+        gameChips.innerHTML = '';
+        const played = games.won + games.lost + games.revealed;
+        const begs = games.revealed + games.begged;
+
+        if (played === 0) {
+            gameChips.appendChild(emptyNote('No games played yet 🍫'));
+        } else {
+            const winRate = Math.round((games.won / played) * 100);
+            const avgGuesses = games.won > 0
+                ? (games.winGuessTotal / games.won).toFixed(1)
+                : '—';
+
+            gameChips.appendChild(makeChip(played, 'played'));
+            gameChips.appendChild(makeChip(winRate + '%', 'win rate'));
+            gameChips.appendChild(makeChip(games.firstTry, 'first tries 🤯'));
+            gameChips.appendChild(makeChip(avgGuesses, 'avg guesses'));
+            gameChips.appendChild(makeChip(begs, 'begs 🥺'));
+        }
+    }
 
     // --- Apple Music URL Parser ---
     function parseAppleMusicUrl(url) {

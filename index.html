@@ -36,6 +36,7 @@
             <button id="music-wall-btn" class="btn-secondary">Our Music Wall 🎵</button>
             <button id="love-notes-btn" class="btn-secondary">Love Notes for Baby❤</button>
             <button id="word-game-btn" class="btn-secondary">Guess My Word 🍫</button>
+            <button id="stats-btn" class="btn-secondary">Us in Numbers 📊</button>
         </div>
     </main>
 
@@ -160,6 +161,62 @@
                         <button id="reveal-yes-btn">Yes, tell me 🥺</button>
                         <button id="reveal-no-btn" class="btn-secondary">No, I got this 💪</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ======== Stats Screen ======== -->
+    <main id="stats-screen" class="screen" style="display: none;">
+        <div class="container stats-container">
+            <button id="stats-back-btn" class="back-btn">&larr; Back</button>
+            <h2>Us in Numbers 📊</h2>
+
+            <p id="stats-loading" class="small-text">Counting our everything...</p>
+            <p id="stats-error" class="messages-error" style="display: none;"></p>
+
+            <div id="stats-content" class="stats-content" style="display: none;">
+                <div class="hero-grid">
+                    <div class="hero-tile">
+                        <span class="hero-number" id="stat-days">0</span>
+                        <span class="hero-label">days together</span>
+                    </div>
+                    <div class="hero-tile">
+                        <span class="hero-number" id="stat-grievances">0</span>
+                        <span class="hero-label">grievances filed</span>
+                    </div>
+                    <div class="hero-tile">
+                        <span class="hero-number" id="stat-songs">0</span>
+                        <span class="hero-label">songs shared</span>
+                    </div>
+                    <div class="hero-tile">
+                        <span class="hero-number" id="stat-wins">0</span>
+                        <span class="hero-label">words guessed</span>
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Mood Meter 🎭</h3>
+                    <p class="tracking-note">tracking since 9 Aug 2026</p>
+                    <div id="mood-bars" class="stat-bars"></div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Drama Scale 🌡️</h3>
+                    <p class="tracking-note">tracking since 9 Aug 2026</p>
+                    <div id="severity-bars" class="stat-bars"></div>
+                    <p id="couch-count" class="couch-note" style="display: none;"></p>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Music Tug-of-War 🎵</h3>
+                    <div id="song-split"></div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Game Corner 🍫</h3>
+                    <p class="tracking-note">tracking since 9 Aug 2026</p>
+                    <div id="game-chips" class="game-chips"></div>
                 </div>
             </div>
         </div>
