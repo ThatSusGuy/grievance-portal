@@ -29,8 +29,8 @@ const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
 // ── Stats page config ──────────────────────────────────────────────
 // Login usernames, exactly as they appear in the Users sheet
 // (case doesn't matter)
-var HER_USERNAME = 'baby';   // ⚠️ REPLACE with her real login username
-var HIS_USERNAME = 'daddy';  // ⚠️ REPLACE with your real login username
+var HER_USERNAME = 'babyyy';
+var HIS_USERNAME = 'me';
 
 // Music Tug-of-War baseline: songs added before per-user tracking
 // existed. New songs are counted automatically via the logged-in user.
@@ -40,7 +40,7 @@ SONG_BASELINE[HIS_USERNAME] = 1;
 
 // How the names appear on the stats page
 var SONG_DISPLAY = {};
-SONG_DISPLAY[HER_USERNAME] = 'Baby 💕';
+SONG_DISPLAY[HER_USERNAME] = 'Baby 🥰';
 SONG_DISPLAY[HIS_USERNAME] = 'Daddy 😎';
 
 function doGet(e) {
