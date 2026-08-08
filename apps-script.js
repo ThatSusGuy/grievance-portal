@@ -12,6 +12,9 @@
  *    word | hint
  *    Add one row per secret word (with an optional hint). The portal
  *    picks a random word from the list for each new game.
+ * 3c. The "Grievances" and "GameLog" tabs (used by the stats page) are
+ *    created automatically the first time something is logged — no
+ *    manual setup needed.
  * 4. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
  * 5. Paste it below in SHEET_ID
  * 6. In the Google Sheet, go to Extensions > Apps Script
@@ -34,9 +37,158 @@ function doGet(e) {
     return getMessages();
   } else if (action === 'getGameWord') {
     return getGameWord();
+  } else if (action === 'logGrievance') {
+    return logGrievance(e.parameter);
+  } else if (action === 'logGame') {
+    return logGame(e.parameter);
+  } else if (action === 'getStats') {
+    return getStats();
   } else {
     return getSongs();
   }
+}
+
+// Returns the named sheet tab, creating it (with headers) if missing
+function ensureSheet(spreadsheet, name, headers) {
+  var sheet = spreadsheet.getSheetByName(name);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(name);
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+function jsonOutput(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Timestamps read from the sheet may be Date objects or strings
+function toIsoString(value) {
+  if (value instanceof Date) return value.toISOString();
+  return String(value || '');
+}
+
+function logGrievance(params) {
+  var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ensureSheet(spreadsheet, 'Grievances',
+    ['timestamp', 'title', 'mood', 'severity']);
+
+  sheet.appendRow([
+    new Date().toISOString(),
+    params.title || '',
+    params.mood || '',
+    params.severity || ''
+  ]);
+
+  return jsonOutput({ status: 'success' });
+}
+
+function logGame(params) {
+  var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ensureSheet(spreadsheet, 'GameLog',
+    ['timestamp', 'word', 'result', 'guesses']);
+
+  // The word arrives base64-encoded (same obfuscation as getGameWord);
+  // decode it so the sheet stays readable
+  var word = params.word || '';
+  try {
+    word = Utilities.newBlob(Utilities.base64Decode(word)).getDataAsString();
+  } catch (err) { /* keep the raw value if it wasn't base64 */ }
+
+  sheet.appendRow([
+    new Date().toISOString(),
+    word,
+    params.result || '',
+    Number(params.guesses) || 0
+  ]);
+
+  return jsonOutput({ status: 'success' });
+}
+
+function getStats() {
+  var spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+
+  // --- Songs (first sheet tab, full history) ---
+  var songsData = spreadsheet.getSheets()[0].getDataRange().getValues();
+  var songTotal = 0;
+  var contributorCounts = {};
+  var contributorNames = {};
+  var lastAdded = '';
+
+  for (var i = 1; i < songsData.length; i++) {
+    if (!songsData[i][0]) continue;
+    songTotal++;
+
+    var addedBy = String(songsData[i][2] || '').trim();
+    if (addedBy) {
+      var nameKey = addedBy.toLowerCase();
+      contributorCounts[nameKey] = (contributorCounts[nameKey] || 0) + 1;
+      if (!contributorNames[nameKey]) contributorNames[nameKey] = addedBy;
+    }
+
+    var ts = toIsoString(songsData[i][4]);
+    if (ts > lastAdded) lastAdded = ts;
+  }
+
+  var contributors = Object.keys(contributorCounts).map(function (key) {
+    return { name: contributorNames[key], count: contributorCounts[key] };
+  }).sort(function (a, b) { return b.count - a.count; });
+
+  // --- Grievances ---
+  var grievances = { total: 0, thisMonth: 0, moods: {}, severities: {} };
+  var grievancesSheet = spreadsheet.getSheetByName('Grievances');
+  if (grievancesSheet) {
+    var gData = grievancesSheet.getDataRange().getValues();
+    var now = new Date();
+    var monthPrefix = now.toISOString().slice(0, 7); // e.g. "2026-08"
+
+    for (var g = 1; g < gData.length; g++) {
+      if (!gData[g][0]) continue;
+      grievances.total++;
+
+      if (toIsoString(gData[g][0]).slice(0, 7) === monthPrefix) {
+        grievances.thisMonth++;
+      }
+
+      var mood = String(gData[g][2] || '').trim();
+      if (mood) grievances.moods[mood] = (grievances.moods[mood] || 0) + 1;
+
+      var severity = String(gData[g][3] || '').trim();
+      if (severity) grievances.severities[severity] = (grievances.severities[severity] || 0) + 1;
+    }
+  }
+
+  // --- Word game ---
+  // Results: won | lost | revealed (mid-game beg) | begged (beg after a loss,
+  // logged in addition to that game's 'lost' row)
+  var games = { won: 0, lost: 0, revealed: 0, begged: 0, firstTry: 0, winGuessTotal: 0 };
+  var gameSheet = spreadsheet.getSheetByName('GameLog');
+  if (gameSheet) {
+    var logData = gameSheet.getDataRange().getValues();
+    for (var r = 1; r < logData.length; r++) {
+      var result = String(logData[r][2] || '').trim();
+      var guesses = Number(logData[r][3]) || 0;
+
+      if (result === 'won') {
+        games.won++;
+        games.winGuessTotal += guesses;
+        if (guesses === 1) games.firstTry++;
+      } else if (result === 'lost') {
+        games.lost++;
+      } else if (result === 'revealed') {
+        games.revealed++;
+      } else if (result === 'begged') {
+        games.begged++;
+      }
+    }
+  }
+
+  return jsonOutput({
+    songs: { total: songTotal, contributors: contributors, lastAdded: lastAdded },
+    grievances: grievances,
+    games: games
+  });
 }
 
 function validateLogin(params) {
