@@ -928,8 +928,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const start = todayUtc - ((WEEKS - 1) * 7 + mondayIndex) * 86400000;
 
         let svg = '';
-        ['M', 'W', 'F'].forEach((label, i) => {
-            svg += '<text x="10" y="' + (14 + (i * 2) * (CELL + GAP) + CELL / 2 + 3) +
+        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach((label, d) => {
+            svg += '<text x="10" y="' + (10 + d * (CELL + GAP) + CELL / 2 + 3) +
                 '" font-size="9" font-weight="700" fill="#8d8797" text-anchor="middle">' + label + '</text>';
         });
 
@@ -973,13 +973,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const seriesValues = MOOD_SERIES.map(series =>
             months.map(month => (moodsByMonth[month] || {})[series[0]] || 0));
-        const grandTotal = seriesValues.reduce((sum, vals) =>
-            sum + vals.reduce((a, b) => a + b, 0), 0);
-
-        if (grandTotal === 0) {
-            moodTrend.appendChild(emptyNote('No grievances yet. Suspicious 🤨'));
-            return;
-        }
 
         MOOD_SERIES.forEach(series => {
             const item = document.createElement('span');
@@ -1034,10 +1027,11 @@ document.addEventListener('DOMContentLoaded', () => {
         gameRings.innerHTML = '';
 
         const begs = games.revealed + games.begged;
+        const rate = n => played > 0 ? n / played : 0;
         const rings = [
-            [64, games.won / played, '#e83e8c', 'win rate ' + Math.round(games.won / played * 100) + '%'],
-            [46, games.firstTry / played, '#5d429a', 'first tries ' + Math.round(games.firstTry / played * 100) + '%'],
-            [28, begs / played, '#b3831d', 'begs ' + Math.round(begs / played * 100) + '%']
+            [64, rate(games.won), '#e83e8c', 'win rate ' + Math.round(rate(games.won) * 100) + '%'],
+            [46, rate(games.firstTry), '#5d429a', 'first tries ' + Math.round(rate(games.firstTry) * 100) + '%'],
+            [28, rate(begs), '#b3831d', 'begs ' + Math.round(rate(begs) * 100) + '%']
         ];
 
         const cx = 84, cy = 80;
@@ -1068,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderGameStreak(recent) {
         gameStreak.innerHTML = '';
-        if (!recent || recent.length === 0) return;
+        recent = recent || [];
 
         const colorFor = { won: '#178f7e', lost: '#8d8797', revealed: '#b3831d', begged: '#b3831d' };
         let streak = 0;
@@ -1084,7 +1078,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const rows = Math.ceil(recent.length / 10);
+        // Placeholder outlines where future games will land
+        for (let i = recent.length; i < 20; i++) {
+            const x = 22 + (i % 10) * 36;
+            const y = 22 + Math.floor(i / 10) * 36;
+            svg += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="none" ' +
+                'stroke="rgba(93,66,154,0.22)" stroke-width="1.5" stroke-dasharray="3 3"/>';
+        }
+
+        const rows = 2;
         const legendY = 22 + rows * 36;
         svg += '<circle cx="22" cy="' + legendY + '" r="5.5" fill="#178f7e"/>' +
             '<text x="33" y="' + (legendY + 4) + '" font-size="11" font-weight="700" fill="#3a3344">win</text>' +
@@ -1119,23 +1121,19 @@ document.addEventListener('DOMContentLoaded', () => {
         severityBars.innerHTML = '';
         couchCount.style.display = 'none';
 
-        if (grievances.total === 0) {
-            severityBars.appendChild(emptyNote('Zero drama recorded. For now 🤭'));
-        } else {
-            const severityMax = Math.max.apply(null, SEVERITY_LABELS.map(
-                pair => grievances.severities[pair[0]] || 0
-            ));
-            SEVERITY_LABELS.forEach(pair => {
-                severityBars.appendChild(
-                    makeBarRow(pair[1], grievances.severities[pair[0]] || 0, severityMax)
-                );
-            });
+        const severityMax = Math.max.apply(null, SEVERITY_LABELS.map(
+            pair => grievances.severities[pair[0]] || 0
+        ));
+        SEVERITY_LABELS.forEach(pair => {
+            severityBars.appendChild(
+                makeBarRow(pair[1], grievances.severities[pair[0]] || 0, severityMax)
+            );
+        });
 
-            const couchTotal = grievances.severities["You're sleeping on the couch 😡"] || 0;
-            if (couchTotal > 0) {
-                couchCount.textContent = 'Couch sentences served: ' + couchTotal + ' 🛋️😡';
-                couchCount.style.display = 'block';
-            }
+        const couchTotal = grievances.severities["You're sleeping on the couch 😡"] || 0;
+        if (couchTotal > 0) {
+            couchCount.textContent = 'Couch sentences served: ' + couchTotal + ' 🛋️😡';
+            couchCount.style.display = 'block';
         }
 
         // Music Tug-of-War
@@ -1170,22 +1168,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Game Corner
         gameChips.innerHTML = '';
-        gameRings.innerHTML = '';
-        gameStreak.innerHTML = '';
         const played = games.won + games.lost + games.revealed;
 
-        if (played === 0) {
-            gameChips.appendChild(emptyNote('No games played yet 🍫'));
-        } else {
-            renderGameRings(played, games);
-            renderGameStreak(games.recent || []);
+        renderGameRings(played, games);
+        renderGameStreak(games.recent || []);
 
-            const avgGuesses = games.won > 0
-                ? (games.winGuessTotal / games.won).toFixed(1)
-                : '–';
-            gameChips.appendChild(makeChip(played, 'played'));
-            gameChips.appendChild(makeChip(avgGuesses, 'avg guesses'));
-        }
+        const avgGuesses = games.won > 0
+            ? (games.winGuessTotal / games.won).toFixed(1)
+            : '–';
+        gameChips.appendChild(makeChip(played, 'played'));
+        gameChips.appendChild(makeChip(avgGuesses, 'avg guesses'));
     }
 
     // --- Apple Music URL Parser ---
