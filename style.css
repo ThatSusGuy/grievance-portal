@@ -389,17 +389,17 @@ button:hover {
     }
 }
 
-/* ======== Word Game Styles ======== */
+/* ======== Word Game Styles (Wordle-style) ======== */
 
 .word-game-container {
-    max-width: 500px;
+    max-width: 520px;
 }
 
 .word-game-area {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 16px;
 }
 
 .word-game-hint {
@@ -409,43 +409,70 @@ button:hover {
     margin-bottom: 0;
 }
 
-.word-tiles {
+.game-board {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.board-row {
+    display: grid;
     gap: 6px;
 }
 
 .word-tile {
-    width: 38px;
-    height: 46px;
+    aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid rgba(93, 66, 154, 0.4);
-    border-bottom-width: 4px;
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.6);
-    font-size: 1.3em;
-    font-weight: bold;
-    color: #e83e8c;
+    font-size: 1.5em;
+    font-weight: 800;
     text-transform: uppercase;
+    color: #3a3344;
+    background-color: #ffffff;
+    border: 2px solid #b9aec9;
+    border-radius: 6px;
+    user-select: none;
 }
 
-.word-tile.filled {
-    background: linear-gradient(135deg, rgba(232, 62, 140, 0.15), rgba(93, 66, 154, 0.15));
-    border-color: #e83e8c;
-    animation: messageReveal 0.3s ease-out;
+.word-tile.tile-typed {
+    border-color: #5d429a;
+    animation: popIn 0.1s ease;
 }
 
-.tile-gap {
-    width: 16px;
+.word-tile.tile-correct {
+    background-color: #6aaa64;
+    border-color: #6aaa64;
+    color: #ffffff;
 }
 
-.hearts-display {
-    font-size: 1.3em;
-    letter-spacing: 4px;
-    margin-bottom: 0;
+.word-tile.tile-present {
+    background-color: #c9b458;
+    border-color: #c9b458;
+    color: #ffffff;
+}
+
+.word-tile.tile-absent {
+    background-color: #8b8494;
+    border-color: #8b8494;
+    color: #ffffff;
+}
+
+.word-tile.tile-flip {
+    animation: flipIn 0.45s ease both;
+}
+
+/* Long words (8+ letters) get tighter tiles */
+.game-board.long-word .board-row {
+    gap: 4px;
+}
+
+.game-board.long-word .word-tile {
+    font-size: 1.05em;
+    border-radius: 4px;
+    border-width: 2px;
 }
 
 .word-game-status {
@@ -469,35 +496,66 @@ button:hover {
 }
 
 .key-btn {
-    flex: 0 1 38px;
-    min-width: 26px;
-    padding: 10px 0;
-    font-size: 0.95em;
-    font-weight: bold;
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.75);
-    color: #5d429a;
-    border: 1px solid rgba(93, 66, 154, 0.25);
+    flex: 1;
+    max-width: 40px;
+    padding: 14px 0;
+    font-size: 0.9em;
+    font-weight: 800;
+    border-radius: 6px;
+    background-color: #e8e3f0;
+    color: #4a3f5c;
+    border: none;
 }
 
 .key-btn:hover:not(:disabled) {
-    background-color: rgba(232, 62, 140, 0.2);
+    background-color: #d9d0e6;
 }
 
 .key-btn:disabled {
     cursor: default;
-    opacity: 0.55;
+}
+
+.key-btn.key-wide {
+    max-width: 64px;
+    flex: 1.6;
+    font-size: 0.7em;
 }
 
 .key-btn.key-correct {
-    background-color: rgba(76, 175, 80, 0.45);
-    color: #1b5e20;
-    opacity: 1;
+    background-color: #6aaa64;
+    color: #ffffff;
 }
 
-.key-btn.key-wrong {
-    background-color: rgba(0, 0, 0, 0.12);
-    color: #999;
+.key-btn.key-present {
+    background-color: #c9b458;
+    color: #ffffff;
+}
+
+.key-btn.key-absent {
+    background-color: #8b8494;
+    color: #ffffff;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.85); }
+    60% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+@keyframes flipIn {
+    0% { transform: rotateX(-90deg); }
+    100% { transform: rotateX(0); }
+}
+
+@keyframes rowShake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(3px); }
+    30%, 50%, 70% { transform: translateX(-5px); }
+    40%, 60% { transform: translateX(5px); }
+}
+
+.board-row.row-shake {
+    animation: rowShake 0.5s;
 }
 
 .try-again-btn,
@@ -575,14 +633,23 @@ button:hover {
     }
 
     .word-tile {
-        width: 32px;
-        height: 40px;
-        font-size: 1.1em;
+        font-size: 1.2em;
+    }
+
+    .game-board.long-word .word-tile {
+        font-size: 0.95em;
+    }
+
+    .keyboard-row {
+        gap: 4px;
     }
 
     .key-btn {
-        min-width: 24px;
-        padding: 9px 0;
-        font-size: 0.85em;
+        padding: 12px 0;
+        font-size: 0.8em;
+    }
+
+    .key-btn.key-wide {
+        font-size: 0.6em;
     }
 }
