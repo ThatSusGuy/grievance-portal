@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const thanksScreen = document.getElementById('thanks-screen');
     const musicWallScreen = document.getElementById('music-wall-screen');
     const messagesScreen = document.getElementById('messages-screen');
+    const wordGameScreen = document.getElementById('word-game-screen');
 
     // --- Login Logic ---
     const loginForm = document.getElementById('login-form');
@@ -301,6 +302,205 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pickCategoryBtn.addEventListener('click', () => {
         showCategoriesView();
+    });
+
+    // --- WORD GAME ---
+
+    const wordGameBtn = document.getElementById('word-game-btn');
+    const wordGameBackBtn = document.getElementById('word-game-back-btn');
+    const wordGameError = document.getElementById('word-game-error');
+    const wordGameLoading = document.getElementById('word-game-loading');
+    const wordGameArea = document.getElementById('word-game-area');
+    const wordGameHint = document.getElementById('word-game-hint');
+    const wordTiles = document.getElementById('word-tiles');
+    const heartsDisplay = document.getElementById('hearts-display');
+    const wordGameStatus = document.getElementById('word-game-status');
+    const gameKeyboard = document.getElementById('game-keyboard');
+    const tryAgainBtn = document.getElementById('try-again-btn');
+    const revealBtn = document.getElementById('reveal-btn');
+    const revealConfirm = document.getElementById('reveal-confirm');
+    const revealYesBtn = document.getElementById('reveal-yes-btn');
+    const revealNoBtn = document.getElementById('reveal-no-btn');
+
+    const MAX_WRONG_GUESSES = 5;
+    const KEYBOARD_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+
+    let gameWord = null;       // The secret word, uppercase
+    let gameStorageKey = null; // localStorage key for the current word
+    let gameState = null;      // { guessed: [], wrong: 0, revealed: false }
+
+    wordGameBtn.addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        wordGameScreen.style.display = 'flex';
+        fetchGameWord();
+    });
+
+    wordGameBackBtn.addEventListener('click', () => {
+        wordGameScreen.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+    });
+
+    function fetchGameWord() {
+        wordGameArea.style.display = 'none';
+        wordGameLoading.textContent = 'Loading your puzzle...';
+        wordGameLoading.style.display = 'block';
+
+        fetch(APPS_SCRIPT_URL + '?action=getGameWord')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.word) {
+                    wordGameLoading.textContent = 'No secret word set yet! Tell your man to pick one 😤';
+                    return;
+                }
+
+                // Decode the base64 word (UTF-8 safe)
+                gameWord = decodeURIComponent(escape(atob(data.word))).toUpperCase();
+                gameStorageKey = 'wordGame_' + data.word;
+
+                // Forget saved progress from older words
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && key.indexOf('wordGame_') === 0 && key !== gameStorageKey) {
+                        localStorage.removeItem(key);
+                    }
+                }
+
+                const saved = localStorage.getItem(gameStorageKey);
+                gameState = saved
+                    ? JSON.parse(saved)
+                    : { guessed: [], wrong: 0, revealed: false };
+
+                if (data.hint) {
+                    wordGameHint.textContent = 'Hint: ' + data.hint;
+                    wordGameHint.style.display = 'block';
+                } else {
+                    wordGameHint.style.display = 'none';
+                }
+
+                wordGameLoading.style.display = 'none';
+                wordGameArea.style.display = 'flex';
+                revealConfirm.style.display = 'none';
+                renderGame();
+            })
+            .catch(error => {
+                console.error('Error fetching game word:', error);
+                wordGameLoading.textContent = 'Could not load the game. Please try again later.';
+            });
+    }
+
+    function saveGameState() {
+        localStorage.setItem(gameStorageKey, JSON.stringify(gameState));
+    }
+
+    function isGameWon() {
+        return gameWord
+            .split('')
+            .filter(ch => /[A-Z]/.test(ch))
+            .every(ch => gameState.guessed.indexOf(ch) !== -1);
+    }
+
+    function isGameLost() {
+        return !isGameWon() && gameState.wrong >= MAX_WRONG_GUESSES;
+    }
+
+    function renderGame() {
+        const won = isGameWon();
+        const lost = isGameLost();
+        const revealed = gameState.revealed;
+        const over = won || lost || revealed;
+
+        // Word tiles
+        wordTiles.innerHTML = '';
+        gameWord.split('').forEach(ch => {
+            if (!/[A-Z]/.test(ch)) {
+                const gap = document.createElement('span');
+                gap.className = 'tile-gap';
+                wordTiles.appendChild(gap);
+                return;
+            }
+            const tile = document.createElement('span');
+            const show = won || revealed || gameState.guessed.indexOf(ch) !== -1;
+            tile.className = 'word-tile' + (show ? ' filled' : '');
+            tile.textContent = show ? ch : '';
+            wordTiles.appendChild(tile);
+        });
+
+        // Hearts
+        heartsDisplay.textContent =
+            '❤️'.repeat(MAX_WRONG_GUESSES - gameState.wrong) + '💔'.repeat(gameState.wrong);
+
+        // Status message
+        if (revealed) {
+            wordGameStatus.textContent = 'It was "' + gameWord + '" 💝 You owe me a kissie for telling 😌';
+        } else if (won) {
+            wordGameStatus.textContent = 'YAYYY you got it, cutie!! 🥳💕';
+        } else if (lost) {
+            wordGameStatus.textContent = 'Out of tries 😗 The word stays secret... unless you beg 🤭';
+        } else {
+            wordGameStatus.textContent = '';
+        }
+
+        // Keyboard
+        gameKeyboard.innerHTML = '';
+        KEYBOARD_ROWS.forEach(row => {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'keyboard-row';
+            row.split('').forEach(letter => {
+                const key = document.createElement('button');
+                key.type = 'button';
+                key.textContent = letter;
+                const used = gameState.guessed.indexOf(letter) !== -1;
+                key.className = 'key-btn';
+                if (used) {
+                    key.className += gameWord.indexOf(letter) !== -1 ? ' key-correct' : ' key-wrong';
+                }
+                key.disabled = used || over;
+                key.addEventListener('click', () => guessLetter(letter));
+                rowEl.appendChild(key);
+            });
+            gameKeyboard.appendChild(rowEl);
+        });
+
+        // Buttons
+        tryAgainBtn.style.display = lost && !revealed ? 'block' : 'none';
+        revealBtn.style.display = won || revealed || revealConfirm.style.display !== 'none'
+            ? 'none'
+            : 'block';
+    }
+
+    function guessLetter(letter) {
+        if (isGameWon() || isGameLost() || gameState.revealed) return;
+        if (gameState.guessed.indexOf(letter) !== -1) return;
+
+        gameState.guessed.push(letter);
+        if (gameWord.indexOf(letter) === -1) {
+            gameState.wrong++;
+        }
+        saveGameState();
+        renderGame();
+    }
+
+    tryAgainBtn.addEventListener('click', () => {
+        gameState = { guessed: [], wrong: 0, revealed: false };
+        saveGameState();
+        renderGame();
+    });
+
+    revealBtn.addEventListener('click', () => {
+        revealBtn.style.display = 'none';
+        revealConfirm.style.display = 'flex';
+    });
+
+    revealNoBtn.addEventListener('click', () => {
+        revealConfirm.style.display = 'none';
+        renderGame();
+    });
+
+    revealYesBtn.addEventListener('click', () => {
+        revealConfirm.style.display = 'none';
+        gameState.revealed = true;
+        saveGameState();
+        renderGame();
     });
 
     // --- Apple Music URL Parser ---

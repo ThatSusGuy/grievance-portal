@@ -389,6 +389,156 @@ button:hover {
     }
 }
 
+/* ======== Word Game Styles ======== */
+
+.word-game-container {
+    max-width: 500px;
+}
+
+.word-game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.word-game-hint {
+    font-size: 0.9em;
+    font-style: italic;
+    color: #5d429a;
+    margin-bottom: 0;
+}
+
+.word-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.word-tile {
+    width: 38px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(93, 66, 154, 0.4);
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.6);
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #e83e8c;
+    text-transform: uppercase;
+}
+
+.word-tile.filled {
+    background: linear-gradient(135deg, rgba(232, 62, 140, 0.15), rgba(93, 66, 154, 0.15));
+    border-color: #e83e8c;
+    animation: messageReveal 0.3s ease-out;
+}
+
+.tile-gap {
+    width: 16px;
+}
+
+.hearts-display {
+    font-size: 1.3em;
+    letter-spacing: 4px;
+    margin-bottom: 0;
+}
+
+.word-game-status {
+    font-weight: bold;
+    color: #5d429a;
+    margin-bottom: 0;
+    min-height: 1.2em;
+}
+
+.game-keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.key-btn {
+    flex: 0 1 38px;
+    min-width: 26px;
+    padding: 10px 0;
+    font-size: 0.95em;
+    font-weight: bold;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.75);
+    color: #5d429a;
+    border: 1px solid rgba(93, 66, 154, 0.25);
+}
+
+.key-btn:hover:not(:disabled) {
+    background-color: rgba(232, 62, 140, 0.2);
+}
+
+.key-btn:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.key-btn.key-correct {
+    background-color: rgba(76, 175, 80, 0.45);
+    color: #1b5e20;
+    opacity: 1;
+}
+
+.key-btn.key-wrong {
+    background-color: rgba(0, 0, 0, 0.12);
+    color: #999;
+}
+
+.try-again-btn,
+.reveal-btn {
+    width: 100%;
+    margin-top: 0;
+}
+
+.reveal-btn {
+    font-size: 0.95em;
+}
+
+.reveal-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    background: linear-gradient(135deg, rgba(232, 62, 140, 0.1), rgba(93, 66, 154, 0.1));
+    border: 1px solid rgba(232, 62, 140, 0.2);
+    border-radius: 16px;
+    padding: 15px;
+    animation: messageReveal 0.3s ease-out;
+}
+
+.reveal-confirm-text {
+    font-weight: bold;
+    color: #e83e8c;
+    margin-bottom: 0;
+}
+
+.reveal-confirm-row {
+    display: flex;
+    gap: 10px;
+}
+
+.reveal-confirm-row button {
+    flex: 1;
+    font-size: 0.95em;
+    padding: 12px 10px;
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -418,5 +568,21 @@ button:hover {
 
     .message-text {
         font-size: 1.1em;
+    }
+
+    .word-game-container {
+        max-width: 100%;
+    }
+
+    .word-tile {
+        width: 32px;
+        height: 40px;
+        font-size: 1.1em;
+    }
+
+    .key-btn {
+        min-width: 24px;
+        padding: 9px 0;
+        font-size: 0.85em;
     }
 }
