@@ -327,7 +327,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
     ];
 
-    let gameAnswer = null;      // The secret word, uppercase A-Z only
+    let gameAnswer = null;      // The secret answer's letters, uppercase A-Z only
+    let gameWordParts = null;   // The answer split into words, e.g. ['AURORA','BOREALIS']
     let gameStorageKey = null;  // localStorage key for the current word
     let gameState = null;       // { guesses: [], revealed: false }
     let currentGuess = '';
@@ -358,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Decode the base64 word (UTF-8 safe), keep letters only
-                gameAnswer = decodeURIComponent(escape(atob(data.word)))
-                    .toUpperCase()
-                    .replace(/[^A-Z]/g, '');
+                // Decode the base64 word (UTF-8 safe); multi-word answers
+                // are split into groups shown with a gap, like Wordle spinoffs
+                const decoded = decodeURIComponent(escape(atob(data.word))).toUpperCase();
+                gameWordParts = decoded.split(/[^A-Z]+/).filter(part => part.length > 0);
+                gameAnswer = gameWordParts.join('');
 
                 if (!gameAnswer) {
                     wordGameLoading.textContent = 'No secret word set yet! Tell your man to pick one 😤';
@@ -452,6 +454,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return tile;
     }
 
+    // Builds one board row, inserting a gap column between word groups
+    function buildRow(makeTileAt) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'board-row';
+        rowEl.style.gridTemplateColumns = gameWordParts
+            .map(part => 'repeat(' + part.length + ', 1fr)')
+            .join(' 10px ');
+        rowEl.style.width = 'min(100%, ' +
+            (gameAnswer.length * 58 + (gameWordParts.length - 1) * 10) + 'px)';
+
+        let idx = 0;
+        gameWordParts.forEach((part, p) => {
+            if (p > 0) {
+                const gap = document.createElement('span');
+                gap.className = 'board-gap';
+                rowEl.appendChild(gap);
+            }
+            for (let i = 0; i < part.length; i++) {
+                rowEl.appendChild(makeTileAt(idx));
+                idx++;
+            }
+        });
+        return rowEl;
+    }
+
     function renderBoard() {
         const won = isGameWon();
         const lost = isGameLost();
@@ -460,6 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gameBoard.innerHTML = '';
         gameBoard.classList.toggle('long-word', len > 7);
+        gameBoard.classList.toggle('very-long', len > 10);
 
         // When she gives up, the answer flips into the first unused row
         const revealRow = revealed && gameState.guesses.length < MAX_GUESSES
@@ -467,38 +495,33 @@ document.addEventListener('DOMContentLoaded', () => {
             : -1;
 
         for (let row = 0; row < MAX_GUESSES; row++) {
-            const rowEl = document.createElement('div');
-            rowEl.className = 'board-row';
-            rowEl.style.gridTemplateColumns = 'repeat(' + len + ', 1fr)';
-            rowEl.style.width = 'min(100%, ' + (len * 58) + 'px)';
+            let rowEl;
 
             if (row < gameState.guesses.length) {
                 const guess = gameState.guesses[row];
                 const score = scoreGuess(guess);
-                for (let i = 0; i < len; i++) {
+                rowEl = buildRow(i => {
                     const tile = makeTile(guess[i], 'tile-' + score[i] +
                         (row === justSubmittedRow ? ' tile-flip' : ''));
                     if (row === justSubmittedRow) {
                         tile.style.animationDelay = (i * 0.15) + 's';
                     }
-                    rowEl.appendChild(tile);
-                }
+                    return tile;
+                });
             } else if (row === revealRow) {
-                for (let i = 0; i < len; i++) {
+                rowEl = buildRow(i => {
                     const tile = makeTile(gameAnswer[i], 'tile-correct tile-flip');
                     tile.style.animationDelay = (i * 0.15) + 's';
-                    rowEl.appendChild(tile);
-                }
+                    return tile;
+                });
             } else if (row === gameState.guesses.length && !won && !lost && !revealed) {
-                rowEl.id = 'current-row';
-                for (let i = 0; i < len; i++) {
+                rowEl = buildRow(i => {
                     const ch = currentGuess[i] || '';
-                    rowEl.appendChild(makeTile(ch, ch ? 'tile-typed' : ''));
-                }
+                    return makeTile(ch, ch ? 'tile-typed' : '');
+                });
+                rowEl.id = 'current-row';
             } else {
-                for (let i = 0; i < len; i++) {
-                    rowEl.appendChild(makeTile('', ''));
-                }
+                rowEl = buildRow(() => makeTile('', ''));
             }
 
             gameBoard.appendChild(rowEl);
@@ -517,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Status message
         if (revealed) {
-            wordGameStatus.textContent = 'It was "' + gameAnswer + '" 💝 You owe me a kissie for telling 😌';
+            wordGameStatus.textContent = 'It was "' + gameWordParts.join(' ') + '" 💝 You owe me a kissie for telling 😌';
         } else if (won) {
             wordGameStatus.textContent = gameState.guesses.length === 1
                 ? 'FIRST TRY?! Okay genius baby 🤯💕'
@@ -572,12 +595,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateCurrentRow() {
         const rowEl = document.getElementById('current-row');
         if (!rowEl) return;
-        for (let i = 0; i < rowEl.children.length; i++) {
+        const tiles = rowEl.querySelectorAll('.word-tile');
+        for (let i = 0; i < tiles.length; i++) {
             const ch = currentGuess[i] || '';
-            const tile = rowEl.children[i];
-            if (tile.textContent !== ch) {
-                tile.textContent = ch;
-                tile.className = 'word-tile' + (ch ? ' tile-typed' : '');
+            if (tiles[i].textContent !== ch) {
+                tiles[i].textContent = ch;
+                tiles[i].className = 'word-tile' + (ch ? ' tile-typed' : '');
             }
         }
     }

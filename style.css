@@ -475,6 +475,17 @@ button:hover {
     border-width: 2px;
 }
 
+/* Very long answers (11+ letters, e.g. two-word ones) go tighter still */
+.game-board.very-long .board-row {
+    gap: 3px;
+}
+
+.game-board.very-long .word-tile {
+    font-size: 0.85em;
+    border-radius: 3px;
+    border-width: 1.5px;
+}
+
 .word-game-status {
     font-weight: bold;
     color: #5d429a;
@@ -638,6 +649,10 @@ button:hover {
 
     .game-board.long-word .word-tile {
         font-size: 0.95em;
+    }
+
+    .game-board.very-long .word-tile {
+        font-size: 0.7em;
     }
 
     .keyboard-row {
