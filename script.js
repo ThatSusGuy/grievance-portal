@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const thanksScreen = document.getElementById('thanks-screen');
     const musicWallScreen = document.getElementById('music-wall-screen');
     const messagesScreen = document.getElementById('messages-screen');
+    const wordGameScreen = document.getElementById('word-game-screen');
 
     // --- Login Logic ---
     const loginForm = document.getElementById('login-form');
@@ -301,6 +302,432 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pickCategoryBtn.addEventListener('click', () => {
         showCategoriesView();
+    });
+
+    // --- WORD GAME (Wordle-style) ---
+
+    const wordGameBtn = document.getElementById('word-game-btn');
+    const wordGameBackBtn = document.getElementById('word-game-back-btn');
+    const wordGameLoading = document.getElementById('word-game-loading');
+    const wordGameArea = document.getElementById('word-game-area');
+    const wordGameHint = document.getElementById('word-game-hint');
+    const gameBoard = document.getElementById('game-board');
+    const wordGameStatus = document.getElementById('word-game-status');
+    const gameKeyboard = document.getElementById('game-keyboard');
+    const tryAgainBtn = document.getElementById('try-again-btn');
+    const revealBtn = document.getElementById('reveal-btn');
+    const revealConfirm = document.getElementById('reveal-confirm');
+    const revealYesBtn = document.getElementById('reveal-yes-btn');
+    const revealNoBtn = document.getElementById('reveal-no-btn');
+
+    const MAX_GUESSES = 5;
+    const KEY_ROWS = [
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+        ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
+    ];
+
+    let gameAnswer = null;      // The secret answer's letters, uppercase A-Z only
+    let gameWordParts = null;   // The answer split into words, e.g. ['AURORA','BOREALIS']
+    let gameStorageKey = null;  // localStorage key for the current word
+    let gameState = null;       // { guesses: [], revealed: false }
+    let currentGuess = '';
+    let justSubmittedRow = -1;  // row to play the flip animation on
+    let statusTimeout = null;
+
+    wordGameBtn.addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        wordGameScreen.style.display = 'flex';
+        fetchGameWord();
+    });
+
+    wordGameBackBtn.addEventListener('click', () => {
+        wordGameScreen.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+    });
+
+    function fetchGameWord() {
+        wordGameArea.style.display = 'none';
+        wordGameLoading.textContent = 'Loading your puzzle...';
+        wordGameLoading.style.display = 'block';
+
+        fetch(APPS_SCRIPT_URL + '?action=getGameWord')
+            .then(response => response.json())
+            .then(data => {
+                const words = (data.words || []).filter(entry => {
+                    return decodeGameWord(entry.word).answer.length > 0;
+                });
+
+                if (words.length === 0) {
+                    wordGameLoading.textContent = 'No secret word set yet! Tell your man to pick one 😤';
+                    return;
+                }
+
+                // Resume an unfinished game; otherwise pick a random word,
+                // avoiding the one she just played (like the Love Notes shuffle)
+                const currentB64 = localStorage.getItem('wordGameActive');
+                let chosen = null;
+
+                const currentEntry = words.find(entry => entry.word === currentB64);
+                if (currentEntry) {
+                    const savedState = loadSavedState(currentB64);
+                    const answer = decodeGameWord(currentB64).answer;
+                    if (savedState && savedState.guesses.length > 0 &&
+                        !isFinishedState(savedState, answer)) {
+                        chosen = currentEntry;
+                    }
+                }
+
+                if (!chosen) {
+                    const pool = words.length > 1
+                        ? words.filter(entry => entry.word !== currentB64)
+                        : words;
+                    chosen = pool[Math.floor(Math.random() * pool.length)];
+                }
+
+                const decoded = decodeGameWord(chosen.word);
+                gameWordParts = decoded.parts;
+                gameAnswer = decoded.answer;
+                gameStorageKey = 'wordGame_' + chosen.word;
+                localStorage.setItem('wordGameActive', chosen.word);
+
+                // Forget saved progress from other words
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && key.indexOf('wordGame_') === 0 && key !== gameStorageKey) {
+                        localStorage.removeItem(key);
+                    }
+                }
+
+                gameState = loadSavedState(chosen.word) || { guesses: [], revealed: false };
+
+                currentGuess = '';
+                justSubmittedRow = -1;
+
+                if (chosen.hint) {
+                    wordGameHint.textContent = 'Hint: ' + chosen.hint;
+                    wordGameHint.style.display = 'block';
+                } else {
+                    wordGameHint.style.display = 'none';
+                }
+
+                wordGameLoading.style.display = 'none';
+                wordGameArea.style.display = 'flex';
+                revealConfirm.style.display = 'none';
+                renderGame();
+            })
+            .catch(error => {
+                console.error('Error fetching game word:', error);
+                wordGameLoading.textContent = 'Could not load the game. Please try again later.';
+            });
+    }
+
+    // Decode a base64 word (UTF-8 safe) into letter groups + joined answer
+    function decodeGameWord(b64) {
+        let decoded = '';
+        try {
+            decoded = decodeURIComponent(escape(atob(b64))).toUpperCase();
+        } catch (e) { /* bad data in the sheet, treat as empty */ }
+        const parts = decoded.split(/[^A-Z]+/).filter(part => part.length > 0);
+        return { parts: parts, answer: parts.join('') };
+    }
+
+    function loadSavedState(b64) {
+        try {
+            const parsed = JSON.parse(localStorage.getItem('wordGame_' + b64));
+            if (parsed && Array.isArray(parsed.guesses)) return parsed;
+        } catch (e) { /* corrupt or old-format state */ }
+        return null;
+    }
+
+    function isFinishedState(state, answer) {
+        return state.revealed ||
+            state.guesses.indexOf(answer) !== -1 ||
+            state.guesses.length >= MAX_GUESSES;
+    }
+
+    function saveGameState() {
+        localStorage.setItem(gameStorageKey, JSON.stringify(gameState));
+    }
+
+    function isGameWon() {
+        return gameState.guesses.indexOf(gameAnswer) !== -1;
+    }
+
+    function isGameLost() {
+        return !isGameWon() && gameState.guesses.length >= MAX_GUESSES;
+    }
+
+    function isGameOver() {
+        return isGameWon() || isGameLost() || gameState.revealed;
+    }
+
+    // Wordle scoring: green first, then yellows limited by remaining letter counts
+    function scoreGuess(guess) {
+        const result = [];
+        const remaining = {};
+
+        for (let i = 0; i < gameAnswer.length; i++) {
+            if (guess[i] === gameAnswer[i]) {
+                result[i] = 'correct';
+            } else {
+                result[i] = 'absent';
+                remaining[gameAnswer[i]] = (remaining[gameAnswer[i]] || 0) + 1;
+            }
+        }
+        for (let i = 0; i < gameAnswer.length; i++) {
+            if (result[i] !== 'correct' && remaining[guess[i]] > 0) {
+                result[i] = 'present';
+                remaining[guess[i]]--;
+            }
+        }
+        return result;
+    }
+
+    function makeTile(letter, extraClass) {
+        const tile = document.createElement('span');
+        tile.className = 'word-tile' + (extraClass ? ' ' + extraClass : '');
+        tile.textContent = letter;
+        return tile;
+    }
+
+    // Builds one board row, inserting a gap column between word groups
+    function buildRow(makeTileAt) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'board-row';
+        rowEl.style.gridTemplateColumns = gameWordParts
+            .map(part => 'repeat(' + part.length + ', 1fr)')
+            .join(' 10px ');
+        rowEl.style.width = 'min(100%, ' +
+            (gameAnswer.length * 58 + (gameWordParts.length - 1) * 10) + 'px)';
+
+        let idx = 0;
+        gameWordParts.forEach((part, p) => {
+            if (p > 0) {
+                const gap = document.createElement('span');
+                gap.className = 'board-gap';
+                rowEl.appendChild(gap);
+            }
+            for (let i = 0; i < part.length; i++) {
+                rowEl.appendChild(makeTileAt(idx));
+                idx++;
+            }
+        });
+        return rowEl;
+    }
+
+    function renderBoard() {
+        const won = isGameWon();
+        const lost = isGameLost();
+        const revealed = gameState.revealed;
+        const len = gameAnswer.length;
+
+        gameBoard.innerHTML = '';
+        gameBoard.classList.toggle('long-word', len > 7);
+        gameBoard.classList.toggle('very-long', len > 10);
+
+        // When she gives up, the answer flips into the first unused row
+        const revealRow = revealed && gameState.guesses.length < MAX_GUESSES
+            ? gameState.guesses.length
+            : -1;
+
+        for (let row = 0; row < MAX_GUESSES; row++) {
+            let rowEl;
+
+            if (row < gameState.guesses.length) {
+                const guess = gameState.guesses[row];
+                const score = scoreGuess(guess);
+                rowEl = buildRow(i => {
+                    const tile = makeTile(guess[i], 'tile-' + score[i] +
+                        (row === justSubmittedRow ? ' tile-flip' : ''));
+                    if (row === justSubmittedRow) {
+                        tile.style.animationDelay = (i * 0.15) + 's';
+                    }
+                    return tile;
+                });
+            } else if (row === revealRow) {
+                rowEl = buildRow(i => {
+                    const tile = makeTile(gameAnswer[i], 'tile-correct tile-flip');
+                    tile.style.animationDelay = (i * 0.15) + 's';
+                    return tile;
+                });
+            } else if (row === gameState.guesses.length && !won && !lost && !revealed) {
+                rowEl = buildRow(i => {
+                    const ch = currentGuess[i] || '';
+                    return makeTile(ch, ch ? 'tile-typed' : '');
+                });
+                rowEl.id = 'current-row';
+            } else {
+                rowEl = buildRow(() => makeTile('', ''));
+            }
+
+            gameBoard.appendChild(rowEl);
+        }
+
+        justSubmittedRow = -1;
+    }
+
+    function renderGame() {
+        const won = isGameWon();
+        const lost = isGameLost();
+        const revealed = gameState.revealed;
+        const over = won || lost || revealed;
+
+        renderBoard();
+
+        // Status message
+        if (revealed) {
+            wordGameStatus.textContent = 'It was "' + gameWordParts.join(' ') + '" 💝 You owe me a kissie for telling 😌';
+        } else if (won) {
+            wordGameStatus.textContent = gameState.guesses.length === 1
+                ? 'FIRST TRY?! Okay genius baby 🤯💕'
+                : 'YAYYY you got it, cutie!! 🥳💕';
+        } else if (lost) {
+            wordGameStatus.textContent = 'Out of tries 😗 The word stays secret... unless you beg 🤭';
+        } else {
+            wordGameStatus.textContent = '';
+        }
+
+        // Keyboard — each key wears its best result so far
+        const rank = { absent: 1, present: 2, correct: 3 };
+        const keyStatus = {};
+        gameState.guesses.forEach(guess => {
+            const score = scoreGuess(guess);
+            for (let i = 0; i < guess.length; i++) {
+                const letter = guess[i];
+                if (!keyStatus[letter] || rank[score[i]] > rank[keyStatus[letter]]) {
+                    keyStatus[letter] = score[i];
+                }
+            }
+        });
+
+        gameKeyboard.innerHTML = '';
+        KEY_ROWS.forEach(rowKeys => {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'keyboard-row';
+            rowKeys.forEach(k => {
+                const key = document.createElement('button');
+                key.type = 'button';
+                key.textContent = k;
+                key.className = 'key-btn';
+                if (k === 'ENTER' || k === '⌫') {
+                    key.className += ' key-wide';
+                } else if (keyStatus[k]) {
+                    key.className += ' key-' + keyStatus[k];
+                }
+                key.disabled = over;
+                key.addEventListener('click', () => handleKey(k));
+                rowEl.appendChild(key);
+            });
+            gameKeyboard.appendChild(rowEl);
+        });
+
+        // Buttons
+        tryAgainBtn.style.display = lost && !revealed ? 'block' : 'none';
+        revealBtn.style.display = won || revealed || revealConfirm.style.display !== 'none'
+            ? 'none'
+            : 'block';
+    }
+
+    function updateCurrentRow() {
+        const rowEl = document.getElementById('current-row');
+        if (!rowEl) return;
+        const tiles = rowEl.querySelectorAll('.word-tile');
+        for (let i = 0; i < tiles.length; i++) {
+            const ch = currentGuess[i] || '';
+            if (tiles[i].textContent !== ch) {
+                tiles[i].textContent = ch;
+                tiles[i].className = 'word-tile' + (ch ? ' tile-typed' : '');
+            }
+        }
+    }
+
+    function flashStatus(message) {
+        wordGameStatus.textContent = message;
+        clearTimeout(statusTimeout);
+        statusTimeout = setTimeout(() => {
+            if (!isGameOver()) wordGameStatus.textContent = '';
+        }, 1500);
+    }
+
+    function handleKey(k) {
+        if (!gameAnswer || !gameState || isGameOver()) return;
+
+        if (k === 'ENTER') {
+            submitGuess();
+            return;
+        }
+        if (k === '⌫') {
+            currentGuess = currentGuess.slice(0, -1);
+            updateCurrentRow();
+            return;
+        }
+        if (/^[A-Z]$/.test(k) && currentGuess.length < gameAnswer.length) {
+            currentGuess += k;
+            updateCurrentRow();
+        }
+    }
+
+    function submitGuess() {
+        if (currentGuess.length !== gameAnswer.length) {
+            flashStatus('Not enough letters, cutie 😗');
+            const rowEl = document.getElementById('current-row');
+            if (rowEl) {
+                rowEl.classList.remove('row-shake');
+                rowEl.offsetHeight; // restart the animation
+                rowEl.classList.add('row-shake');
+            }
+            return;
+        }
+
+        justSubmittedRow = gameState.guesses.length;
+        gameState.guesses.push(currentGuess);
+        currentGuess = '';
+        saveGameState();
+        renderGame();
+    }
+
+    // Physical keyboard support while the game screen is open
+    document.addEventListener('keydown', (event) => {
+        if (wordGameScreen.style.display === 'none') return;
+        if (wordGameArea.style.display === 'none') return;
+        if (!gameAnswer || !gameState) return;
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+        if (event.key === 'Enter') {
+            if (!isGameOver()) {
+                event.preventDefault();
+                handleKey('ENTER');
+            }
+        } else if (event.key === 'Backspace') {
+            handleKey('⌫');
+        } else if (/^[a-zA-Z]$/.test(event.key)) {
+            handleKey(event.key.toUpperCase());
+        }
+    });
+
+    tryAgainBtn.addEventListener('click', () => {
+        gameState = { guesses: [], revealed: false };
+        currentGuess = '';
+        saveGameState();
+        renderGame();
+    });
+
+    revealBtn.addEventListener('click', () => {
+        revealBtn.style.display = 'none';
+        revealConfirm.style.display = 'flex';
+    });
+
+    revealNoBtn.addEventListener('click', () => {
+        revealConfirm.style.display = 'none';
+        renderGame();
+    });
+
+    revealYesBtn.addEventListener('click', () => {
+        revealConfirm.style.display = 'none';
+        gameState.revealed = true;
+        saveGameState();
+        renderGame();
     });
 
     // --- Apple Music URL Parser ---

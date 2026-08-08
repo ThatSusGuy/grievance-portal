@@ -35,6 +35,7 @@
             <button id="enter-btn">Enter</button>
             <button id="music-wall-btn" class="btn-secondary">Our Music Wall 🎵</button>
             <button id="love-notes-btn" class="btn-secondary">Love Notes for Baby❤</button>
+            <button id="word-game-btn" class="btn-secondary">Guess My Word 🍫</button>
         </div>
     </main>
 
@@ -132,6 +133,34 @@
                 </div>
                 <button id="another-message-btn">Show Another 💝</button>
                 <button id="pick-category-btn" class="btn-secondary pick-category-btn">Pick a Category</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ======== Word Game Screen ======== -->
+    <main id="word-game-screen" class="screen" style="display: none;">
+        <div class="container word-game-container">
+            <button id="word-game-back-btn" class="back-btn">&larr; Back</button>
+            <h2>Guess My Word 🍫</h2>
+            <p class="small-text">I picked a secret word just for you. 5 tries 😏<br>🟩 right spot &nbsp;🟨 wrong spot</p>
+
+            <p id="word-game-error" class="messages-error" style="display: none;"></p>
+            <p id="word-game-loading" class="small-text">Loading your puzzle...</p>
+
+            <div id="word-game-area" class="word-game-area" style="display: none;">
+                <p id="word-game-hint" class="word-game-hint" style="display: none;"></p>
+                <div id="game-board" class="game-board"></div>
+                <p id="word-game-status" class="word-game-status"></p>
+                <div id="game-keyboard" class="game-keyboard"></div>
+                <button id="try-again-btn" class="try-again-btn" style="display: none;">Try Again 🔁</button>
+                <button id="reveal-btn" class="btn-secondary reveal-btn">Reveal (daddy please tell me 🥺)</button>
+                <div id="reveal-confirm" class="reveal-confirm" style="display: none;">
+                    <p class="reveal-confirm-text">Are you sure, cutie? 🥰</p>
+                    <div class="reveal-confirm-row">
+                        <button id="reveal-yes-btn">Yes, tell me 🥺</button>
+                        <button id="reveal-no-btn" class="btn-secondary">No, I got this 💪</button>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
