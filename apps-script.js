@@ -167,7 +167,11 @@ function getStats() {
   }).sort(function (a, b) { return b.count - a.count; });
 
   // --- Grievances ---
-  var grievances = { total: 0, thisMonth: 0, moods: {}, severities: {} };
+  var grievances = {
+    total: 0, thisMonth: 0, moods: {}, severities: {},
+    byDay: {},        // 'YYYY-MM-DD' -> count, for the Drama Calendar
+    moodsByMonth: {}  // 'YYYY-MM' -> { mood: count }, for the Mood Trends chart
+  };
   var grievancesSheet = spreadsheet.getSheetByName('Grievances');
   if (grievancesSheet) {
     var gData = grievancesSheet.getDataRange().getValues();
@@ -178,12 +182,21 @@ function getStats() {
       if (!gData[g][0]) continue;
       grievances.total++;
 
-      if (toIsoString(gData[g][0]).slice(0, 7) === monthPrefix) {
-        grievances.thisMonth++;
-      }
+      var iso = toIsoString(gData[g][0]);
+      var day = iso.slice(0, 10);
+      var month = iso.slice(0, 7);
+
+      if (month === monthPrefix) grievances.thisMonth++;
+      if (day) grievances.byDay[day] = (grievances.byDay[day] || 0) + 1;
 
       var mood = String(gData[g][2] || '').trim();
-      if (mood) grievances.moods[mood] = (grievances.moods[mood] || 0) + 1;
+      if (mood) {
+        grievances.moods[mood] = (grievances.moods[mood] || 0) + 1;
+        if (month) {
+          if (!grievances.moodsByMonth[month]) grievances.moodsByMonth[month] = {};
+          grievances.moodsByMonth[month][mood] = (grievances.moodsByMonth[month][mood] || 0) + 1;
+        }
+      }
 
       var severity = String(gData[g][3] || '').trim();
       if (severity) grievances.severities[severity] = (grievances.severities[severity] || 0) + 1;
@@ -193,10 +206,12 @@ function getStats() {
   // --- Word game ---
   // Results: won | lost | revealed (mid-game beg) | begged (beg after a loss,
   // logged in addition to that game's 'lost' row)
-  var games = { won: 0, lost: 0, revealed: 0, begged: 0, firstTry: 0, winGuessTotal: 0 };
+  var games = { won: 0, lost: 0, revealed: 0, begged: 0, firstTry: 0, winGuessTotal: 0, recent: [] };
   var gameSheet = spreadsheet.getSheetByName('GameLog');
   if (gameSheet) {
     var logData = gameSheet.getDataRange().getValues();
+    var events = [];
+
     for (var r = 1; r < logData.length; r++) {
       var result = String(logData[r][2] || '').trim();
       var guesses = Number(logData[r][3]) || 0;
@@ -205,14 +220,24 @@ function getStats() {
         games.won++;
         games.winGuessTotal += guesses;
         if (guesses === 1) games.firstTry++;
+        events.push('won');
       } else if (result === 'lost') {
         games.lost++;
+        events.push('lost');
       } else if (result === 'revealed') {
         games.revealed++;
+        events.push('revealed');
       } else if (result === 'begged') {
         games.begged++;
+        // A beg after a loss belongs to the previous game, so upgrade
+        // that game's entry instead of adding a new one
+        for (var k = events.length - 1; k >= 0; k--) {
+          if (events[k] === 'lost') { events[k] = 'begged'; break; }
+        }
       }
     }
+
+    games.recent = events.slice(-20);
   }
 
   return jsonOutput({
