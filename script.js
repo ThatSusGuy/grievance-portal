@@ -581,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (won) {
             wordGameStatus.textContent = gameState.guesses.length === 1
                 ? 'FIRST TRY?! Okay genius baby 🤯💕'
-                : 'YAYYY you got it, cutie!! 🥳💕';
+                : 'YAYYY you are so smart, my baby!! 🥳😘💕';
         } else if (lost) {
             wordGameStatus.textContent = 'Out of tries 😗 The word stays secret... unless you beg 🤭';
         } else {
