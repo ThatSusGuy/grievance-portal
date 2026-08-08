@@ -799,10 +799,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const CALENDAR_SHADES = [
-        'rgba(232, 62, 140, 0.08)',
-        'rgba(232, 62, 140, 0.3)',
-        'rgba(232, 62, 140, 0.6)',
-        '#e83e8c'
+        'rgba(93, 66, 154, 0.09)',
+        'rgba(93, 66, 154, 0.32)',
+        'rgba(93, 66, 154, 0.62)',
+        '#5d429a'
     ];
 
     const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -1005,6 +1005,14 @@ document.addEventListener('DOMContentLoaded', () => {
             svg += '<text x="' + xAt(i) + '" y="132" font-size="9" font-weight="700" ' +
                 'fill="#8d8797" text-anchor="middle">' +
                 MONTH_NAMES[Number(month.slice(5, 7)) - 1] + '</text>';
+        });
+
+        // Soft area fills first so every line stays visible on top of them
+        MOOD_SERIES.forEach((series, s) => {
+            const vals = seriesValues[s];
+            const path = vals.map((v, i) => (i ? 'L' : 'M') + xAt(i) + ' ' + yAt(v)).join(' ');
+            svg += '<path d="' + path + ' L ' + x1 + ' ' + y0 + ' L ' + x0 + ' ' + y0 +
+                ' Z" fill="' + series[2] + '" fill-opacity="0.14"/>';
         });
 
         MOOD_SERIES.forEach((series, s) => {
