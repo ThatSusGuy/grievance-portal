@@ -707,8 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderGame();
     }
 
-    // Log a finished game to the sheet for the stats page (once per game)
+    // Log a finished game to the sheet for the stats page (once per game).
+    // Only her games count — daddy's test runs stay off the books 😎
     function logGameResult(result) {
+        if (sessionStorage.getItem('portalUser') !== 'babyyy') return;
         if (!gameState || !gameStorageKey) return;
         if (result !== 'begged') {
             if (gameState.logged) return;
@@ -778,11 +780,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const statsLoading = document.getElementById('stats-loading');
     const statsError = document.getElementById('stats-error');
     const statsContent = document.getElementById('stats-content');
-    const moodBars = document.getElementById('mood-bars');
+    const dramaCalendar = document.getElementById('drama-calendar');
+    const moodLegend = document.getElementById('mood-legend');
+    const moodTrend = document.getElementById('mood-trend');
+    const gameRings = document.getElementById('game-rings');
+    const gameStreak = document.getElementById('game-streak');
     const severityBars = document.getElementById('severity-bars');
     const couchCount = document.getElementById('couch-count');
     const songSplit = document.getElementById('song-split');
     const gameChips = document.getElementById('game-chips');
+
+    // Fixed color per mood (colorblind-safe with the portal palette)
+    const MOOD_SERIES = [
+        ['😠 angy 😠', 'angy 😠', '#e83e8c'],
+        ['🥺 baby me', 'baby me 🥺', '#5d429a'],
+        ['😞 sad aara hai', 'sad aara hai 😞', '#b3831d'],
+        ['💃 fun time hehehehe', 'fun time 💃', '#178f7e']
+    ];
+
+    const CALENDAR_SHADES = [
+        'rgba(93, 66, 154, 0.09)',
+        'rgba(93, 66, 154, 0.32)',
+        'rgba(93, 66, 154, 0.62)',
+        '#5d429a'
+    ];
+
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     // Short labels for the long severity options, in escalating order
     const SEVERITY_LABELS = [
@@ -894,10 +918,193 @@ document.addEventListener('DOMContentLoaded', () => {
         return chip;
     }
 
+    function renderDramaCalendar(byDay) {
+        dramaCalendar.innerHTML = '';
+
+        const CELL = 17, GAP = 3, WEEKS = 16;
+        const now = new Date();
+        const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        const mondayIndex = (new Date(todayUtc).getUTCDay() + 6) % 7; // Mon = 0
+        const start = todayUtc - ((WEEKS - 1) * 7 + mondayIndex) * 86400000;
+
+        let svg = '';
+        ['M', 'W', 'F'].forEach((label, i) => {
+            svg += '<text x="10" y="' + (14 + (i * 2) * (CELL + GAP) + CELL / 2 + 3) +
+                '" font-size="9" font-weight="700" fill="#8d8797" text-anchor="middle">' + label + '</text>';
+        });
+
+        for (let w = 0; w < WEEKS; w++) {
+            for (let d = 0; d < 7; d++) {
+                const t = start + (w * 7 + d) * 86400000;
+                if (t > todayUtc) continue;
+                const key = new Date(t).toISOString().slice(0, 10);
+                const count = byDay[key] || 0;
+                svg += '<rect x="' + (22 + w * (CELL + GAP)) + '" y="' + (10 + d * (CELL + GAP)) +
+                    '" width="' + CELL + '" height="' + CELL + '" rx="4" fill="' +
+                    CALENDAR_SHADES[Math.min(count, 3)] + '"><title>' + key +
+                    (count === 1 ? ': 1 grievance' : ': ' + count + ' grievances') + '</title></rect>';
+            }
+        }
+
+        // less → more legend
+        const legendY = 10 + 7 * (CELL + GAP) + 8;
+        svg += '<text x="22" y="' + (legendY + 9) + '" font-size="9" font-weight="700" fill="#8d8797">less</text>';
+        CALENDAR_SHADES.forEach((shade, i) => {
+            svg += '<rect x="' + (48 + i * 15) + '" y="' + legendY + '" width="11" height="11" rx="3" fill="' + shade + '"/>';
+        });
+        svg += '<text x="' + (48 + 4 * 15 + 4) + '" y="' + (legendY + 9) + '" font-size="9" font-weight="700" fill="#8d8797">more</text>';
+
+        const width = 22 + WEEKS * (CELL + GAP);
+        const height = legendY + 16;
+        dramaCalendar.innerHTML = '<svg viewBox="0 0 ' + width + ' ' + height + '" role="img">' + svg + '</svg>';
+    }
+
+    function renderMoodTrend(moodsByMonth) {
+        moodLegend.innerHTML = '';
+        moodTrend.innerHTML = '';
+
+        // The last 6 months, oldest first
+        const now = new Date();
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+            months.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
+                .toISOString().slice(0, 7));
+        }
+
+        const seriesValues = MOOD_SERIES.map(series =>
+            months.map(month => (moodsByMonth[month] || {})[series[0]] || 0));
+        const grandTotal = seriesValues.reduce((sum, vals) =>
+            sum + vals.reduce((a, b) => a + b, 0), 0);
+
+        if (grandTotal === 0) {
+            moodTrend.appendChild(emptyNote('No grievances yet. Suspicious 🤨'));
+            return;
+        }
+
+        MOOD_SERIES.forEach(series => {
+            const item = document.createElement('span');
+            item.className = 'mood-legend-item';
+            item.innerHTML = '<span class="mood-legend-dot" style="background:' + series[2] + '"></span>' + series[1];
+            moodLegend.appendChild(item);
+        });
+
+        const maxVal = Math.max(3, ...seriesValues.map(vals => Math.max(...vals)));
+        const x0 = 26, x1 = 366, y0 = 118, y1 = 14;
+        const xAt = i => x0 + i * (x1 - x0) / (months.length - 1);
+        const yAt = v => y0 - (v / maxVal) * (y0 - y1);
+
+        let svg = '';
+        [0, Math.ceil(maxVal / 2), maxVal].forEach(v => {
+            svg += '<line x1="' + x0 + '" y1="' + yAt(v) + '" x2="' + x1 + '" y2="' + yAt(v) +
+                '" stroke="rgba(93,66,154,0.12)" stroke-width="1"/>' +
+                '<text x="' + (x0 - 6) + '" y="' + (yAt(v) + 3) +
+                '" font-size="9" font-weight="700" fill="#8d8797" text-anchor="end">' + v + '</text>';
+        });
+
+        months.forEach((month, i) => {
+            svg += '<text x="' + xAt(i) + '" y="132" font-size="9" font-weight="700" ' +
+                'fill="#8d8797" text-anchor="middle">' +
+                MONTH_NAMES[Number(month.slice(5, 7)) - 1] + '</text>';
+        });
+
+        // Soft area fills first so every line stays visible on top of them
+        MOOD_SERIES.forEach((series, s) => {
+            const vals = seriesValues[s];
+            const path = vals.map((v, i) => (i ? 'L' : 'M') + xAt(i) + ' ' + yAt(v)).join(' ');
+            svg += '<path d="' + path + ' L ' + x1 + ' ' + y0 + ' L ' + x0 + ' ' + y0 +
+                ' Z" fill="' + series[2] + '" fill-opacity="0.14"/>';
+        });
+
+        MOOD_SERIES.forEach((series, s) => {
+            const vals = seriesValues[s];
+            const path = vals.map((v, i) => (i ? 'L' : 'M') + xAt(i) + ' ' + yAt(v)).join(' ');
+            svg += '<path d="' + path + '" stroke="' + series[2] +
+                '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+            vals.forEach((v, i) => {
+                svg += '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="3.5" fill="' + series[2] +
+                    '" stroke="#fff" stroke-width="1.5"><title>' + series[1] + ' · ' +
+                    months[i] + ': ' + v + '</title></circle>';
+            });
+        });
+
+        moodTrend.innerHTML = '<svg viewBox="0 0 380 140" role="img">' + svg + '</svg>';
+    }
+
+    function renderGameRings(played, games) {
+        gameRings.innerHTML = '';
+
+        const begs = games.revealed + games.begged;
+        const rings = [
+            [64, games.won / played, '#e83e8c', 'win rate ' + Math.round(games.won / played * 100) + '%'],
+            [46, games.firstTry / played, '#5d429a', 'first tries ' + Math.round(games.firstTry / played * 100) + '%'],
+            [28, begs / played, '#b3831d', 'begs ' + Math.round(begs / played * 100) + '%']
+        ];
+
+        const cx = 84, cy = 80;
+        let svg = '', legend = '';
+        rings.forEach((ring, i) => {
+            const circumference = 2 * Math.PI * ring[0];
+            svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + ring[0] +
+                '" stroke="rgba(93,66,154,0.1)" stroke-width="13" fill="none"/>' +
+                '<circle class="ring-fill" cx="' + cx + '" cy="' + cy + '" r="' + ring[0] +
+                '" stroke="' + ring[2] + '" stroke-width="13" fill="none" stroke-linecap="round"' +
+                ' stroke-dasharray="0 ' + circumference + '" data-target="' +
+                (circumference * Math.min(ring[1], 1)) + ' ' + circumference +
+                '" transform="rotate(-90 ' + cx + ' ' + cy + ')"/>';
+            legend += '<circle cx="184" cy="' + (50 + i * 26) + '" r="5" fill="' + ring[2] + '"/>' +
+                '<text x="196" y="' + (54 + i * 26) + '" font-size="12.5" font-weight="700" fill="#3a3344">' +
+                ring[3] + '</text>';
+        });
+
+        gameRings.innerHTML = '<svg viewBox="0 0 380 160" role="img">' + svg + legend + '</svg>';
+
+        // Fill the rings after they land in the DOM so the sweep animates
+        setTimeout(() => {
+            gameRings.querySelectorAll('.ring-fill').forEach(el => {
+                el.setAttribute('stroke-dasharray', el.getAttribute('data-target'));
+            });
+        }, 60);
+    }
+
+    function renderGameStreak(recent) {
+        gameStreak.innerHTML = '';
+        if (!recent || recent.length === 0) return;
+
+        const colorFor = { won: '#178f7e', lost: '#8d8797', revealed: '#b3831d', begged: '#b3831d' };
+        let streak = 0;
+        for (let i = recent.length - 1; i >= 0 && recent[i] === 'won'; i--) streak++;
+
+        let svg = '';
+        recent.forEach((result, i) => {
+            const x = 22 + (i % 10) * 36;
+            const y = 22 + Math.floor(i / 10) * 36;
+            svg += '<circle cx="' + x + '" cy="' + y + '" r="10" fill="' + colorFor[result] + '"/>';
+            if (result === 'revealed' || result === 'begged') {
+                svg += '<text x="' + x + '" y="' + (y + 4) + '" font-size="10" text-anchor="middle">🥺</text>';
+            }
+        });
+
+        const rows = Math.ceil(recent.length / 10);
+        const legendY = 22 + rows * 36;
+        svg += '<circle cx="22" cy="' + legendY + '" r="5.5" fill="#178f7e"/>' +
+            '<text x="33" y="' + (legendY + 4) + '" font-size="11" font-weight="700" fill="#3a3344">win</text>' +
+            '<circle cx="76" cy="' + legendY + '" r="5.5" fill="#8d8797"/>' +
+            '<text x="87" y="' + (legendY + 4) + '" font-size="11" font-weight="700" fill="#3a3344">loss</text>' +
+            '<circle cx="136" cy="' + legendY + '" r="5.5" fill="#b3831d"/>' +
+            '<text x="147" y="' + (legendY + 4) + '" font-size="11" font-weight="700" fill="#3a3344">beg 🥺</text>';
+
+        if (streak >= 2) {
+            svg += '<text x="366" y="' + (legendY + 4) + '" font-size="11.5" font-weight="800" ' +
+                'fill="#e83e8c" text-anchor="end">streak: ' + streak + ' 🔥</text>';
+        }
+
+        gameStreak.innerHTML = '<svg viewBox="0 0 380 ' + (legendY + 14) + '" role="img">' + svg + '</svg>';
+    }
+
     function renderStats(stats) {
         const songs = stats.songs || { total: 0, contributors: [] };
         const grievances = stats.grievances || { total: 0, thisMonth: 0, moods: {}, severities: {} };
-        const games = stats.games || { won: 0, lost: 0, revealed: 0, begged: 0, firstTry: 0, winGuessTotal: 0 };
+        const games = stats.games || { won: 0, lost: 0, revealed: 0, begged: 0, firstTry: 0, winGuessTotal: 0, recent: [] };
 
         // Hero tiles
         countUp(document.getElementById('stat-days'), inclusiveDays);
@@ -905,20 +1112,8 @@ document.addEventListener('DOMContentLoaded', () => {
         countUp(document.getElementById('stat-songs'), songs.total);
         countUp(document.getElementById('stat-wins'), games.won);
 
-        // Mood Meter — most frequent first
-        moodBars.innerHTML = '';
-        const moodEntries = Object.keys(grievances.moods)
-            .map(mood => ({ label: mood, count: grievances.moods[mood] }))
-            .sort((a, b) => b.count - a.count);
-
-        if (moodEntries.length === 0) {
-            moodBars.appendChild(emptyNote('No grievances yet. Suspicious 🤨'));
-        } else {
-            const maxMood = moodEntries[0].count;
-            moodEntries.forEach(entry => {
-                moodBars.appendChild(makeBarRow(entry.label, entry.count, maxMood));
-            });
-        }
+        renderDramaCalendar(grievances.byDay || {});
+        renderMoodTrend(grievances.moodsByMonth || {});
 
         // Drama Scale — fixed escalating order so the shape tells the story
         severityBars.innerHTML = '';
@@ -975,22 +1170,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Game Corner
         gameChips.innerHTML = '';
+        gameRings.innerHTML = '';
+        gameStreak.innerHTML = '';
         const played = games.won + games.lost + games.revealed;
-        const begs = games.revealed + games.begged;
 
         if (played === 0) {
             gameChips.appendChild(emptyNote('No games played yet 🍫'));
         } else {
-            const winRate = Math.round((games.won / played) * 100);
+            renderGameRings(played, games);
+            renderGameStreak(games.recent || []);
+
             const avgGuesses = games.won > 0
                 ? (games.winGuessTotal / games.won).toFixed(1)
-                : '—';
-
+                : '–';
             gameChips.appendChild(makeChip(played, 'played'));
-            gameChips.appendChild(makeChip(winRate + '%', 'win rate'));
-            gameChips.appendChild(makeChip(games.firstTry, 'first tries 🤯'));
             gameChips.appendChild(makeChip(avgGuesses, 'avg guesses'));
-            gameChips.appendChild(makeChip(begs, 'begs 🥺'));
         }
     }
 
