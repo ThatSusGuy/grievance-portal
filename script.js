@@ -1180,6 +1180,113 @@ document.addEventListener('DOMContentLoaded', () => {
         gameChips.appendChild(makeChip(avgGuesses, 'avg guesses'));
     }
 
+    // --- RELATIONSHIP AGREEMENT ---
+
+    const agreementIntroScreen = document.getElementById('agreement-intro-screen');
+    const agreementScreen = document.getElementById('agreement-screen');
+    const agreementBtn = document.getElementById('agreement-btn');
+    const agreementIntroBackBtn = document.getElementById('agreement-intro-back-btn');
+    const agreementReadBtn = document.getElementById('agreement-read-btn');
+    const agreementBackBtn = document.getElementById('agreement-back-btn');
+    const agreementLoading = document.getElementById('agreement-loading');
+    const agreementError = document.getElementById('agreement-error');
+    const pdfPages = document.getElementById('pdf-pages');
+
+    const AGREEMENT_PDF = 'relationship-agreement.pdf';
+    const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
+
+    let pdfJsPromise = null;
+    let agreementRendered = false;
+
+    // The ceremonial reading of the covenant comes first
+    agreementBtn.addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        agreementIntroScreen.style.display = 'flex';
+    });
+
+    agreementIntroBackBtn.addEventListener('click', () => {
+        agreementIntroScreen.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+    });
+
+    agreementReadBtn.addEventListener('click', () => {
+        agreementIntroScreen.style.display = 'none';
+        agreementScreen.style.display = 'flex';
+        renderAgreementPdf();
+    });
+
+    agreementBackBtn.addEventListener('click', () => {
+        agreementScreen.style.display = 'none';
+        agreementIntroScreen.style.display = 'flex';
+    });
+
+    // PDF.js is only fetched when the agreement is actually opened,
+    // so the rest of the portal stays light
+    function loadPdfJs() {
+        if (window.pdfjsLib) return Promise.resolve();
+        if (!pdfJsPromise) {
+            pdfJsPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = PDFJS_CDN + 'pdf.min.js';
+                script.onload = resolve;
+                script.onerror = () => {
+                    pdfJsPromise = null; // allow a retry next time
+                    reject(new Error('Could not load PDF.js'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+        return pdfJsPromise;
+    }
+
+    function renderAgreementPdf() {
+        if (agreementRendered) return;
+
+        agreementError.style.display = 'none';
+        agreementLoading.style.display = 'block';
+
+        loadPdfJs()
+            .then(() => {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_CDN + 'pdf.worker.min.js';
+                return pdfjsLib.getDocument(AGREEMENT_PDF).promise;
+            })
+            .then(async pdf => {
+                agreementRendered = true;
+                pdfPages.innerHTML = '';
+                pdfPages.style.display = 'flex';
+
+                // Fit pages to the viewer, rendered crisp for retina screens
+                const pageWidth = Math.max(pdfPages.clientWidth - 20, 280);
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+                for (let n = 1; n <= pdf.numPages; n++) {
+                    const page = await pdf.getPage(n);
+                    const scale = pageWidth / page.getViewport({ scale: 1 }).width;
+                    const viewport = page.getViewport({ scale: scale * dpr });
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    pdfPages.appendChild(canvas);
+
+                    await page.render({
+                        canvasContext: canvas.getContext('2d'),
+                        viewport: viewport
+                    }).promise;
+
+                    // First page is up — she can start reading while the rest render
+                    if (n === 1) agreementLoading.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error showing the agreement:', error);
+                agreementLoading.style.display = 'none';
+                agreementError.textContent =
+                    'Could not open the agreement here 💔 Use "Download PDF" below to read it.';
+                agreementError.style.display = 'block';
+            });
+    }
+
     // --- Apple Music URL Parser ---
     function parseAppleMusicUrl(url) {
         url = url.trim();

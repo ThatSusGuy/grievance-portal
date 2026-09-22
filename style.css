@@ -827,6 +827,121 @@ button:hover {
     padding: 12px 10px;
 }
 
+/* ======== Relationship Agreement Styles ======== */
+
+.agreement-intro-container {
+    max-width: 520px;
+}
+
+.agreement-quote-card {
+    background:
+        linear-gradient(135deg, rgba(232, 62, 140, 0.1), rgba(93, 66, 154, 0.1)),
+        rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(232, 62, 140, 0.2);
+    border-radius: 16px;
+    padding: 25px 22px;
+    margin-bottom: 18px;
+    text-align: left;
+    animation: messageReveal 0.5s ease-out;
+}
+
+.agreement-quote {
+    font-size: 1.08em;
+    font-style: italic;
+    line-height: 1.7;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.agreement-quote strong {
+    color: #5d429a;
+    font-style: normal;
+}
+
+.agreement-quote-attribution {
+    font-size: 0.75em;
+    font-style: normal;
+    font-weight: 700;
+    color: #5d429a;
+    text-align: right;
+    margin-bottom: 0;
+}
+
+.agreement-aside {
+    font-style: italic;
+}
+
+#agreement-read-btn {
+    width: 100%;
+}
+
+.agreement-container {
+    max-width: 700px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.agreement-container .small-text {
+    margin-bottom: 15px;
+}
+
+/* Scrollable stack of rendered PDF pages */
+.pdf-pages {
+    flex: 1;
+    min-height: 0;
+    max-height: 62vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: rgba(93, 66, 154, 0.08);
+    border: 1px solid rgba(93, 66, 154, 0.15);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.pdf-pages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.pdf-pages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.pdf-pages::-webkit-scrollbar-thumb {
+    background: rgba(232, 62, 140, 0.4);
+    border-radius: 3px;
+}
+
+.pdf-pages canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    background-color: #fff;
+}
+
+/* Download link dressed as a primary button */
+.download-btn {
+    display: block;
+    background-color: #e83e8c;
+    color: white;
+    text-decoration: none;
+    padding: 15px 20px;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.download-btn:hover {
+    background-color: #d1307b;
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -889,6 +1004,16 @@ button:hover {
 
     .stats-container {
         max-width: 100%;
+    }
+
+    .agreement-container {
+        max-width: 100%;
+    }
+
+    .pdf-pages {
+        max-height: 58vh;
+        padding: 6px;
+        gap: 6px;
     }
 
     .stat-bar-row {

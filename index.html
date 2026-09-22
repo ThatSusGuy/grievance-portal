@@ -37,6 +37,37 @@
             <button id="love-notes-btn" class="btn-secondary">Love Notes for Baby❤</button>
             <button id="word-game-btn" class="btn-secondary">Guess My Word 🍫</button>
             <button id="stats-btn" class="btn-secondary">Daddy's Numbers 😎</button>
+            <button id="agreement-btn" class="btn-secondary">The Relationship Agreement 📜</button>
+        </div>
+    </main>
+
+    <!-- ======== Relationship Agreement Intro Screen ======== -->
+    <main id="agreement-intro-screen" class="screen" style="display: none;">
+        <div class="container agreement-intro-container">
+            <button id="agreement-intro-back-btn" class="back-btn">&larr; Back</button>
+            <h2>Ahem. 🖋️</h2>
+            <div class="agreement-quote-card">
+                <p class="agreement-quote">&ldquo;I present to you the Relationship Agreement. A binding covenant that in its thirty&#8209;two pages enumerates, iterates and codifies the rights and responsibilities of <strong>Ridit Sunil Nimdia</strong>, here and after known as <em>the&nbsp;boyfriend</em>, and <strong>Kaajal Anil Rai</strong>, here and after known as <em>the&nbsp;girlfriend</em>.&rdquo;</p>
+                <p class="agreement-quote-attribution">&mdash; with apologies to Sheldon Cooper<br>The Big Bang Theory, S5&nbsp;E10, &ldquo;The Flaming Spittoon Acquisition&rdquo;</p>
+            </div>
+            <p class="small-text agreement-aside">&ldquo;It's so romantic.&rdquo; &nbsp;&ldquo;Mutual indemnification always is.&rdquo; 😌</p>
+            <button id="agreement-read-btn">Read the Agreement 📜</button>
+        </div>
+    </main>
+
+    <!-- ======== Relationship Agreement Viewer Screen ======== -->
+    <main id="agreement-screen" class="screen" style="display: none;">
+        <div class="container agreement-container">
+            <button id="agreement-back-btn" class="back-btn">&larr; Back</button>
+            <h2>The Relationship Agreement 📜</h2>
+            <p class="small-text">Thirty-two pages. Binding. Non-negotiable (okay, slightly negotiable) 💕</p>
+
+            <p id="agreement-loading" class="small-text" style="display: none;">Unrolling the covenant...</p>
+            <p id="agreement-error" class="messages-error" style="display: none;"></p>
+
+            <div id="pdf-pages" class="pdf-pages" style="display: none;"></div>
+
+            <a id="agreement-download-btn" class="download-btn" href="relationship-agreement.pdf" download="The Relationship Agreement - Ridit &amp; Kaajal.pdf">Download PDF ⬇️</a>
         </div>
     </main>
 
