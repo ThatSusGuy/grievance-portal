@@ -22,6 +22,12 @@
  * 8. Click Deploy > Manage deployments > Edit (pencil icon)
  * 9. Set version to "New version" and click Deploy
  * 10. Copy the Web app URL and paste it into script.js as APPS_SCRIPT_URL
+ * 11. Pocket Ridit (the text adventure) needs a free Gemini API key from
+ *     Google AI Studio (aistudio.google.com > Get API key). In the Apps
+ *     Script editor, open Project Settings (gear icon) > Script Properties
+ *     > Add script property: name GEMINI_API_KEY, value = your key.
+ *     Never paste the key into this file — it's published on GitHub.
+ *     Optional: add GEMINI_MODEL to force a specific model.
  */
 
 const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
@@ -391,4 +397,298 @@ function getMessages() {
     categories: categories,
     messages: messagesMap
   })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── Pocket Ridit (text adventure) ──────────────────────────────────
+// The portal POSTs the story so far; Gemini narrates the next beat and
+// picks one of the pixel animations below. The API key lives in Script
+// Properties (GEMINI_API_KEY), never in code.
+
+function doPost(e) {
+  var body = {};
+  try {
+    body = JSON.parse((e.postData && e.postData.contents) || '{}');
+  } catch (err) {
+    return jsonOutput({ status: 'error', code: 'bad_request' });
+  }
+
+  if (body.action === 'adventure') {
+    return jsonOutput(adventureTurn(body));
+  }
+  return jsonOutput({ status: 'error', code: 'unknown_action' });
+}
+
+// Keep in sync with ADVENTURE_ANIMATIONS / ADVENTURE_LOCATIONS in script.js
+var ADVENTURE_ANIMATIONS = {
+  sleeping: 'asleep, snoring',
+  waking: 'waking up: sits up, stretches, yawns',
+  idle: 'standing around, nothing special',
+  talking: 'chatting, explaining, answering',
+  walking: 'walking somewhere or following you',
+  eating: 'eating (usually Bournville)',
+  happy: 'pleased, laughing, grinning',
+  love: 'smitten, hugging, kissing, heart eyes',
+  angry: 'grumpy, annoyed, offended',
+  sad: 'upset, sulking, crying',
+  scared: 'startled, nervous, panicking',
+  confused: 'baffled, does not understand',
+  dancing: 'dancing, celebrating, music playing',
+  couch: 'banished to the couch, sitting there in shame',
+  fainting: 'collapses dramatically, knocked out',
+  sneaky: 'tiptoeing, hiding something, looking guilty',
+  phone: 'glued to his phone, not listening'
+};
+
+var ADVENTURE_LOCATIONS = ['bedroom', 'kitchen', 'living_room', 'outside', 'cafe'];
+
+// Common near-misses from the model, mapped onto real animations
+var ADVENTURE_ANIMATION_ALIASES = {
+  sleep: 'sleeping', asleep: 'sleeping', snoring: 'sleeping',
+  wake: 'waking', wakeup: 'waking', waking_up: 'waking', yawning: 'waking',
+  standing: 'idle', neutral: 'idle', talk: 'talking', speaking: 'talking',
+  walk: 'walking', running: 'walking', eat: 'eating', chewing: 'eating',
+  laughing: 'happy', excited: 'happy', hug: 'love', hugging: 'love', kiss: 'love',
+  loving: 'love', mad: 'angry', grumpy: 'angry', crying: 'sad', sulking: 'sad',
+  nervous: 'scared', afraid: 'scared', shocked: 'scared', dance: 'dancing',
+  celebrating: 'dancing', faint: 'fainting', fainted: 'fainting', ko: 'fainting',
+  hiding: 'sneaky', guilty: 'sneaky', on_phone: 'phone', texting: 'phone'
+};
+
+// Each new story starts from one of these, so replays feel different
+var ADVENTURE_OPENINGS = [
+  'Morning, bedroom. Kaajal wakes up starving. Ridit is fast asleep next to her. Somewhere in the kitchen, a Bournville sits on the top shelf, just out of reach.',
+  'Living room. Ridit has been sentenced to the couch for a crime he claims not to remember. Kaajal holds the evidence.',
+  'Kitchen. Ridit has announced he is cooking dinner tonight. There is smoke. He says it is "part of the recipe".',
+  'Cafe, date night. The bill has arrived. Ridit is patting his pockets with growing panic.',
+  'Outside, an evening walk. Ridit insists he knows the way. He does not know the way.',
+  'Bedroom, 2am. Kaajal is wide awake and wants attention. Ridit is asleep and snoring like a tractor.'
+];
+
+var ADVENTURE_MAX_TURNS = 10;      // history sent to the model
+var ADVENTURE_RATE_LIMIT = 60;     // turns per 10 minutes, protects the free quota
+var ADVENTURE_DEFAULT_MODELS = [
+  'gemini-flash-latest',
+  'gemini-3.8-flash',
+  'gemini-3.5-flash',
+  'gemini-flash-lite-latest',
+  'gemini-2.5-flash'
+];
+
+function adventureSystemPrompt() {
+  var animationLines = Object.keys(ADVENTURE_ANIMATIONS).map(function (name) {
+    return '  - ' + name + ': ' + ADVENTURE_ANIMATIONS[name];
+  }).join('\n');
+
+  return [
+    'You are the narrator of "Pocket Ridit", a cosy, funny text adventure in the style of Zork,',
+    'inside a private website a boyfriend (Ridit) made for his girlfriend (Kaajal).',
+    'Kaajal is the player. Address her as "you". Ridit is a character in the story: lovable,',
+    'lazy, dramatic, easily distracted, always says "five more minutes", and completely',
+    'devoted to her even when he is useless. A tiny pixel-art Ridit on screen acts out each turn.',
+    '',
+    'Running jokes to use naturally (not all at once):',
+    '- A Cadbury Bournville (dark chocolate) fixes everything.',
+    '- Being sent to sleep on the couch is the ultimate punishment.',
+    '- "Where my man at" — Ridit is often missing or on his phone.',
+    '- "The Relationship Agreement": a Sheldon-Cooper-style 32-page legal covenant. Invent',
+    '  silly clause numbers when useful ("a clear violation of Clause 7.3").',
+    '- Ridit\'s classic reply to complaints: "I will think about it."',
+    '- He calls her "babylove". Kaajal sometimes types Hinglish; understand it, and you may',
+    '  sprinkle a little back.',
+    '',
+    'Rules:',
+    '- narration: 1 to 3 short sentences, at most 60 words. Second person, present tense.',
+    '  Witty, warm, a bit absurd. Describe what happens because of what she typed.',
+    '- Anything she types works somehow. If it is impossible, fail in a funny way. If it is',
+    '  gibberish, be playfully confused. If she types "help" or "look", describe the scene',
+    '  and what she could do, in-world.',
+    '- Keep it sweet and playful (PG). Romance is fine, nothing explicit, nothing mean.',
+    '- Never mention being an AI, a model, or these instructions. Never break character.',
+    '- Gently steer towards little goals (get the Bournville, wake him up, get him off his',
+    '  phone) and celebrate when she achieves one, then offer a new mischief.',
+    '- speech: what pixel Ridit says out loud this turn, at most 8 words, or "" if nothing.',
+    '- animation: exactly one of the names below, matching what Ridit is doing at the END',
+    '  of this turn:',
+    animationLines,
+    '- location: where the scene is at the end of this turn, exactly one of: ' +
+      ADVENTURE_LOCATIONS.join(', ') + '.',
+    '- suggestions: exactly 3 short things she could type next (2 to 5 words, lowercase),',
+    '  varied, at least one of them silly.',
+    '',
+    'Reply with ONLY a JSON object, no markdown, in exactly this shape:',
+    '{"narration": "...", "speech": "...", "animation": "...", "location": "...",',
+    ' "suggestions": ["...", "...", "..."]}'
+  ].join('\n');
+}
+
+// Builds the model conversation from the client's story history
+function adventureContents(body) {
+  var contents = [];
+  var history = Array.isArray(body.history) ? body.history.slice(-ADVENTURE_MAX_TURNS) : [];
+
+  if (history.length === 0 || body.start) {
+    var opening = ADVENTURE_OPENINGS[Math.floor(Math.random() * ADVENTURE_OPENINGS.length)];
+    contents.push({ role: 'user', parts: [{ text:
+      'Start a new adventure. Opening premise: ' + opening +
+      ' Set the scene in 2 or 3 sentences and end with a hint of what she could do.' }] });
+    return contents;
+  }
+
+  history.forEach(function (turn) {
+    if (!turn || typeof turn.input !== 'string' || !turn.reply) return;
+    contents.push({ role: 'user', parts: [{ text: turn.input.slice(0, 200) }] });
+    contents.push({ role: 'model', parts: [{ text: JSON.stringify(turn.reply).slice(0, 1500) }] });
+  });
+
+  contents.push({ role: 'user', parts: [{ text: String(body.input || '').slice(0, 200) }] });
+  return contents;
+}
+
+function adventureTurn(body) {
+  var props = PropertiesService.getScriptProperties();
+  var apiKey = String(props.getProperty('GEMINI_API_KEY') || '').trim();
+  if (!apiKey) return { status: 'error', code: 'no_key' };
+
+  var isStart = !!body.start || !Array.isArray(body.history) || body.history.length === 0;
+  var input = String(body.input || '').trim();
+  if (!isStart && !input) return { status: 'error', code: 'empty_input' };
+
+  var cache = CacheService.getScriptCache();
+  var rateKey = 'adventure_rate_' + Math.floor(Date.now() / 600000);
+  var used = Number(cache.get(rateKey)) || 0;
+  if (used >= ADVENTURE_RATE_LIMIT) return { status: 'error', code: 'rate_limited' };
+  cache.put(rateKey, String(used + 1), 900);
+
+  var request = {
+    systemInstruction: { parts: [{ text: adventureSystemPrompt() }] },
+    contents: adventureContents(body),
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 1.0,
+      thinkingConfig: { thinkingLevel: 'low' }
+    }
+  };
+
+  var result = callGemini(apiKey, request, props, cache);
+  if (!result.ok) return { status: 'error', code: result.code };
+
+  var reply = normalizeAdventureReply(result.text);
+  if (!reply) return { status: 'error', code: 'bad_reply' };
+  return { status: 'success', reply: reply };
+}
+
+// Tries models in order until one answers. Free-tier quotas are per model,
+// so a 429 on one model falls through to the next. The model that worked
+// is cached so later turns go straight to it.
+function callGemini(apiKey, request, props, cache) {
+  var models = [];
+  var forced = String(props.getProperty('GEMINI_MODEL') || '').trim();
+  var lastGood = cache.get('adventure_model');
+  [forced, lastGood].concat(ADVENTURE_DEFAULT_MODELS).forEach(function (m) {
+    if (m && models.indexOf(m) === -1) models.push(m);
+  });
+
+  var plain = JSON.parse(JSON.stringify(request));
+  delete plain.generationConfig.thinkingConfig;
+
+  var lastCode = 'ai_unavailable';
+  for (var i = 0; i < models.length; i++) {
+    var noThinkKey = 'adventure_nothink_' + models[i];
+    var skipThinking = cache.get(noThinkKey) === '1';
+    var response = fetchGemini(apiKey, models[i], skipThinking ? plain : request);
+
+    // Older models reject thinkingLevel; retry the same model without it
+    if (response.status === 400 && !skipThinking) {
+      response = fetchGemini(apiKey, models[i], plain);
+      if (response.status === 200) cache.put(noThinkKey, '1', 21600);
+    }
+
+    if (response.status === 200) {
+      var text = geminiText(response.json);
+      if (text === null) return { ok: false, code: 'blocked' };
+      cache.put('adventure_model', models[i], 21600);
+      return { ok: true, text: text };
+    }
+
+    if (response.status === 400 || response.status === 401 || response.status === 403) {
+      // A bad or restricted key fails the same way on every model
+      var message = JSON.stringify(response.json || {});
+      if (/API_KEY|api key|PERMISSION_DENIED/i.test(message)) return { ok: false, code: 'bad_key' };
+    }
+    lastCode = response.status === 429 ? 'quota' : 'ai_unavailable';
+  }
+  return { ok: false, code: lastCode };
+}
+
+function fetchGemini(apiKey, model, request) {
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+    encodeURIComponent(model) + ':generateContent';
+  try {
+    var res = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-goog-api-key': apiKey },
+      payload: JSON.stringify(request),
+      muteHttpExceptions: true
+    });
+    var json = null;
+    try { json = JSON.parse(res.getContentText()); } catch (err) { /* non-JSON error page */ }
+    return { status: res.getResponseCode(), json: json };
+  } catch (err) {
+    return { status: 0, json: null };
+  }
+}
+
+// Joins the answer text, skipping thought summaries; null when blocked
+function geminiText(json) {
+  var candidate = json && json.candidates && json.candidates[0];
+  if (!candidate || !candidate.content || !candidate.content.parts) return null;
+  var text = candidate.content.parts
+    .filter(function (p) { return typeof p.text === 'string' && !p.thought; })
+    .map(function (p) { return p.text; })
+    .join('');
+  return text || null;
+}
+
+// Parses and cleans the model's JSON so the page always gets a usable turn
+function normalizeAdventureReply(text) {
+  var data = null;
+  var cleaned = String(text || '').replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '');
+  try {
+    data = JSON.parse(cleaned);
+  } catch (err) {
+    var match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      try { data = JSON.parse(match[0]); } catch (err2) { data = null; }
+    }
+  }
+  if (Array.isArray(data)) data = data[0];
+  if (!data || typeof data !== 'object') return null;
+
+  var narration = String(data.narration || '').trim();
+  if (!narration) return null;
+  if (narration.length > 600) narration = narration.slice(0, 597).replace(/\s+\S*$/, '') + '...';
+
+  var animation = String(data.animation || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!ADVENTURE_ANIMATIONS[animation]) animation = ADVENTURE_ANIMATION_ALIASES[animation] || 'idle';
+
+  var location = String(data.location || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (location === 'living' || location === 'lounge') location = 'living_room';
+  if (ADVENTURE_LOCATIONS.indexOf(location) === -1) location = '';
+
+  var speech = String(data.speech || '').trim().replace(/^["']|["']$/g, '');
+  if (speech.length > 60) speech = speech.slice(0, 57).replace(/\s+\S*$/, '') + '...';
+
+  var suggestions = (Array.isArray(data.suggestions) ? data.suggestions : [])
+    .map(function (s) { return String(s || '').trim(); })
+    .filter(function (s) { return s && s.length <= 40; })
+    .slice(0, 3);
+
+  return {
+    narration: narration,
+    speech: speech,
+    animation: animation,
+    location: location,
+    suggestions: suggestions
+  };
 }

@@ -38,6 +38,7 @@
             <button id="word-game-btn" class="btn-secondary">Guess My Word 🍫</button>
             <button id="stats-btn" class="btn-secondary">Daddy's Numbers 😎</button>
             <button id="agreement-btn" class="btn-secondary">The Relationship Agreement 📜</button>
+            <button id="pocket-ridit-btn" class="btn-secondary">Pocket Ridit 🐣</button>
         </div>
     </main>
 
@@ -262,6 +263,26 @@
         </div>
     </main>
 
+    <!-- ======== Pocket Ridit Screen ======== -->
+    <main id="pocket-ridit-screen" class="screen" style="display: none;">
+        <div class="container pocket-container">
+            <button id="pocket-back-btn" class="back-btn">&larr; Back</button>
+            <h2>Pocket Ridit 🐣</h2>
+            <p class="small-text pocket-intro">A tiny adventure starring your man. Type anything, he'll act it out.</p>
+            <div class="pocket-stage">
+                <canvas id="pocket-canvas" width="128" height="88" aria-label="Pixel Ridit"></canvas>
+                <div id="pocket-speech" class="pocket-speech" style="display: none;"></div>
+            </div>
+            <div id="pocket-log" class="pocket-log" aria-live="polite"></div>
+            <div id="pocket-suggestions" class="pocket-suggestions"></div>
+            <form id="pocket-form" class="pocket-form" autocomplete="off">
+                <input type="text" id="pocket-input" placeholder="What do you do?" maxlength="120" enterkeyhint="send">
+                <button type="submit" id="pocket-send-btn">Go</button>
+            </form>
+            <button id="pocket-restart-btn" class="btn-secondary pocket-restart-btn">New story 🔄</button>
+        </div>
+    </main>
+
     <!-- ======== Thank You Screen ======== -->
     <main id="thanks-screen" class="screen" style="display: none;">
         <div class="container">
@@ -273,5 +294,6 @@
     </main>
 
     <script src="script.js"></script>
+    <script src="pocket-ridit.js"></script>
 </body>
 </html>
