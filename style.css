@@ -1027,17 +1027,22 @@ button:hover {
 /* ======== Pocket Ridit ======== */
 .pocket-container {
     max-width: 520px;
-    max-height: 94vh;
+    height: 94vh;
+    height: 94dvh;
     display: flex;
     flex-direction: column;
 }
 
-.pocket-container h2 {
-    margin-bottom: 6px;
+.pocket-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-shrink: 0;
 }
 
-.pocket-intro {
-    margin-bottom: 12px;
+.pocket-topbar .back-btn {
+    margin-bottom: 0;
 }
 
 .pocket-stage {
@@ -1083,8 +1088,7 @@ button:hover {
 
 .pocket-log {
     flex: 1;
-    min-height: 90px;
-    max-height: 30vh;
+    min-height: 0;
     overflow-y: auto;
     text-align: left;
     margin: 12px 0 8px;
@@ -1140,6 +1144,7 @@ button:hover {
 }
 
 .pocket-suggestions {
+    flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -1162,6 +1167,7 @@ button:hover {
 }
 
 .pocket-form {
+    flex-shrink: 0;
     display: flex;
     gap: 8px;
 }
@@ -1186,18 +1192,20 @@ button:hover {
 }
 
 .pocket-restart-btn {
-    font-size: 0.9em;
-    padding: 10px 16px;
+    font-size: 0.85em;
+    padding: 6px 12px;
+    background: transparent;
+    color: #5d429a;
+}
+
+.pocket-restart-btn:hover {
+    background-color: rgba(93, 66, 154, 0.1);
 }
 
 @media (max-width: 480px) {
     .pocket-container {
         max-width: 100%;
         padding: 18px;
-    }
-
-    .pocket-log {
-        max-height: 26vh;
     }
 
     .pocket-speech {

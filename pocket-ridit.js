@@ -18,8 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keep in sync with ADVENTURE_ANIMATIONS / ADVENTURE_LOCATIONS in apps-script.js
     const ANIMATIONS = ['sleeping', 'waking', 'idle', 'talking', 'walking', 'eating',
         'happy', 'love', 'angry', 'sad', 'scared', 'confused', 'dancing', 'couch',
-        'fainting', 'sneaky', 'phone'];
-    const LOCATIONS = ['bedroom', 'kitchen', 'living_room', 'outside', 'cafe'];
+        'fainting', 'sneaky', 'phone',
+        'showering', 'toilet', 'brushing', 'cooking', 'cleaning', 'working', 'gaming',
+        'reading', 'singing', 'guitar', 'exercising', 'running', 'waving', 'kissing',
+        'proposing', 'flowers', 'gift', 'crying', 'laughing', 'blushing', 'thinking',
+        'shocked', 'sulking', 'begging', 'apologizing', 'shrugging', 'facepalm', 'hiding',
+        'sick', 'sleepy', 'selfie', 'flexing', 'shivering', 'swimming'];
+    const LOCATIONS = ['bedroom', 'kitchen', 'living_room', 'outside', 'cafe',
+        'bathroom', 'shower', 'beach', 'gym', 'office', 'cinema', 'supermarket',
+        'rooftop', 'party', 'car'];
 
     // =====================================================================
     // Pixel engine
@@ -90,7 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
         drop: ['.#.', '###', '###', '.#.'],
         anger: ['##.##', '#...#', '.....', '#...#', '##.##'],
         sparkle: ['..#..', '.....', '#.#.#', '.....', '..#..'],
-        bubble: ['#####', '#####', '.#...']
+        bubble: ['#####', '#####', '.#...'],
+        ha: ['#.#.###', '#.#.#.#', '###.###', '#.#.#.#', '#.#.#.#'],
+        scribble: ['.##.#', '#..##', '.###.', '##..#', '#.##.'],
+        flake: ['#.#', '.#.', '#.#']
     };
 
     function rect(c, x, y, w, h, color) {
@@ -125,7 +135,35 @@ document.addEventListener('DOMContentLoaded', () => {
         danceA: [[-12, -36], [6, -11]],
         danceB: [[-8, -11], [10, -36]],
         swingA: [[-9, -12], [5, -11]],
-        swingB: [[-7, -11], [7, -12]]
+        swingB: [[-7, -11], [7, -12]],
+        hold: [[-4, -15], [2, -15]],
+        brush: [[-8, -11], [4, -22]],
+        pan: [[-8, -11], [9, -16]],
+        panUp: [[-8, -11], [9, -20]],
+        broom: [[2, -17], [4, -12]],
+        type: [[-4, -13], [2, -13]],
+        mic: [[-8, -11], [3, -21]],
+        guitar: [[-5, -12], [3, -15]],
+        strum: [[-5, -12], [3, -12]],
+        liftUp: [[-12, -34], [10, -34]],
+        liftDown: [[-12, -21], [10, -21]],
+        runA: [[-11, -14], [9, -21]],
+        runB: [[-11, -21], [9, -14]],
+        wave1: [[-8, -11], [11, -31]],
+        wave2: [[-8, -11], [13, -27]],
+        kiss: [[-8, -11], [2, -22]],
+        blow: [[-8, -11], [12, -24]],
+        offer: [[-8, -11], [11, -18]],
+        pray: [[-2, -17], [0, -17]],
+        chin: [[-3, -14], [2, -20]],
+        shrug: [[-13, -18], [11, -18]],
+        shrugLow: [[-12, -14], [10, -14]],
+        cross: [[3, -15], [-5, -14]],
+        face: [[-8, -11], [-1, -28]],
+        selfie: [[-11, -30], [11, -35]],
+        flex: [[-13, -29], [11, -29]],
+        swimA: [[-12, -34], [10, -20]],
+        swimB: [[-12, -20], [10, -34]]
     };
 
     function defaultPose() {
@@ -148,8 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p(-5, -4, 4, 3, C.pants); p(1, -4, 4, 3, C.pants);
             p(-6, -1, 5, 1, C.shoe); p(1, -1, 5, 1, C.shoe);
         } else {
-            const liftL = legs === 'walkA' ? 1 : 0;
-            const liftR = legs === 'walkB' ? 1 : 0;
+            const liftL = legs === 'walkA' ? 1 : legs === 'runA' ? 3 : 0;
+            const liftR = legs === 'walkB' ? 1 : legs === 'runB' ? 3 : 0;
             p(-5, -8, 4, 7 - liftL, C.pants);
             p(1, -8, 4, 7 - liftR, C.pants);
             p(-2, -8, 1, 7 - liftL, C.pantsShade); p(4, -8, 1, 7 - liftR, C.pantsShade);
@@ -190,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (pose.tint > 0) {
             s.globalAlpha = Math.min(1, pose.tint);
-            f(2, 8, 14, 11, C.angry);
+            f(2, 8, 14, 11, pose.tintColor || C.angry);
             s.globalAlpha = 1;
         }
 
@@ -227,6 +265,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     f(ex, 11, 3, 1, C.eye); f(ex, 12, 3, 2, C.white); f(ex + 1, 12, 1, 2, C.eye); break;
                 case 'down':
                     f(ex, 12, 3, 1, C.eye); f(ex + 1, 13, 1, 1, C.eye); break;
+                case 'sparkle':
+                    // big puppy eyes
+                    f(ex, 12, 3, 2, C.eye); f(ex, 12, 1, 1, C.white); break;
+                case 'up':
+                    f(ex, 11, 3, 1, C.eye); f(ex, 12, 3, 2, C.white); f(ex + 1, 12, 1, 1, C.eye); break;
                 case 'squint':
                     if (ex === 4) { f(ex, 13, 3, 1, C.eye); break; }
                     f(ex, 12, 3, 1, C.eye); f(ex, 13, 3, 1, C.white); f(ex + 1, 13, 1, 1, C.eye); break;
@@ -260,6 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'wavy':
                 f(7, 17, 1, 1, C.lipDark); f(8, 18, 1, 1, C.lipDark);
                 f(9, 17, 1, 1, C.lipDark); f(10, 18, 1, 1, C.lipDark); break;
+            case 'jaw':
+                f(7, 16, 4, 4, C.lipDark); f(8, 17, 2, 2, '#3a1d20'); break;
             case 'pout':
                 // the kissy face
                 f(7, 16, 4, 3, C.lip); f(8, 17, 2, 1, C.lipDark); break;
@@ -270,16 +315,79 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Things he's holding
-        if (pose.item === 'bournville') {
-            const hand = hands[1], hx = hand[0] + 1, hy = hand[1] + up;
-            const choc = Math.max(0, 2 - pose.bite);
-            p(hx, hy - 3, 3, 4, C.wrapper);
-            p(hx, hy - 2, 3, 1, C.gold);
-            if (choc > 0) p(hx, hy - 3 - choc, 3, choc, C.choc);
-        } else if (pose.item === 'phone') {
-            p(-2, -19 + up, 4, 5, '#333');
-            p(-1, -18 + up, 2, 3, pose.screenOn ? '#8fe3ff' : '#4d7f99');
-            p(-3, -15 + up, 2, 2, C.skin); p(1, -15 + up, 2, 2, C.skin);
+        const rx = hands[1][0], ry = hands[1][1] + up;
+        switch (pose.item) {
+            case 'bournville': {
+                const choc = Math.max(0, 2 - pose.bite);
+                p(rx + 1, ry - 3, 3, 4, C.wrapper);
+                p(rx + 1, ry - 2, 3, 1, C.gold);
+                if (choc > 0) p(rx + 1, ry - 3 - choc, 3, choc, C.choc);
+                break;
+            }
+            case 'phone':
+                p(-2, -19 + up, 4, 5, '#333');
+                p(-1, -18 + up, 2, 3, pose.screenOn ? '#8fe3ff' : '#4d7f99');
+                p(-3, -15 + up, 2, 2, C.skin); p(1, -15 + up, 2, 2, C.skin);
+                break;
+            case 'toothbrush':
+                p(rx - 3, ry, 5, 1, '#4aa3ff'); p(rx - 4, ry - 1, 2, 1, C.white);
+                break;
+            case 'pan':
+                p(rx + 2, ry, 4, 1, '#333'); p(rx + 5, ry - 1, 7, 2, '#2b2b2b'); p(rx + 7, ry - 2, 3, 1, '#f2c94c');
+                break;
+            case 'broom':
+                for (let i = 0; i < 16; i++) p(rx + Math.round(i * 0.25), ry - 6 + i, 1, 1, '#8a5a3c');
+                p(rx + 2, -3, 6, 3, '#e3b94c'); p(rx + 2, -1, 6, 1, '#c99a2e');
+                break;
+            case 'laptop':
+                p(-8, -12 + up, 16, 1, '#9aa1a8'); p(-7, -21 + up, 14, 9, '#c0c6cc');
+                p(-1, -18 + up, 2, 2, '#e83e8c');
+                break;
+            case 'controller':
+                p(-6, -17 + up, 12, 4, '#3a3a40'); p(-5, -16 + up, 2, 1, '#888');
+                p(3, -16 + up, 1, 1, '#e83e8c'); p(4, -15 + up, 1, 1, '#4aa3ff');
+                break;
+            case 'book':
+                p(-7, -20 + up, 14, 7, '#e83e8c'); p(-6, -19 + up, 12, 5, C.white); p(0, -19 + up, 1, 5, '#d8c8d0');
+                p(-5, -18 + up, 4, 1, '#aaa'); p(2, -17 + up, 3, 1, '#aaa');
+                break;
+            case 'mic':
+                p(rx, ry - 3, 2, 3, '#555'); p(rx - 1, ry - 5, 4, 2, '#aaa');
+                break;
+            case 'guitar':
+                p(-7, -15 + up, 9, 7, '#c8762e'); p(-6, -16 + up, 7, 1, '#c8762e'); p(-4, -13 + up, 2, 2, '#5a3420');
+                p(2, -13 + up, 10, 1, '#6b4430'); p(11, -14 + up, 2, 3, '#6b4430');
+                break;
+            case 'dumbbell':
+                hands.forEach(([hx, hy0]) => {
+                    const hy = hy0 + up;
+                    p(hx - 2, hy, 6, 1, '#888'); p(hx - 3, hy - 1, 2, 3, '#222'); p(hx + 3, hy - 1, 2, 3, '#222');
+                });
+                break;
+            case 'ring':
+                p(rx + 1, ry - 3, 4, 3, '#e83e8c'); p(rx + 1, ry - 4, 4, 1, '#c22a72'); p(rx + 2, ry - 5, 2, 1, C.gold);
+                break;
+            case 'flowers':
+                // red roses, like the bouquet in their photo
+                p(-3, -14 + up, 6, 3, '#f4ece4'); p(-1, -16 + up, 1, 3, '#3c8d40'); p(1, -16 + up, 1, 3, '#3c8d40');
+                p(-5, -21 + up, 3, 3, '#d81e3a'); p(-2, -22 + up, 3, 3, '#e8344e'); p(1, -21 + up, 3, 3, '#d81e3a');
+                p(-3, -19 + up, 3, 3, '#e8344e'); p(0, -19 + up, 3, 3, '#c41a33');
+                p(-6, -18 + up, 2, 2, '#3c8d40'); p(4, -18 + up, 2, 2, '#3c8d40');
+                break;
+            case 'gift':
+                p(-5, -20 + up, 10, 7, '#5d9cec'); p(-1, -20 + up, 2, 7, '#ffd84a'); p(-5, -17 + up, 10, 1, '#ffd84a');
+                p(-3, -22 + up, 2, 2, '#ffd84a'); p(1, -22 + up, 2, 2, '#ffd84a');
+                break;
+            case 'thermometer':
+                p(1, -22 + up, 6, 1, C.white); p(6, -22 + up, 1, 1, '#e8344e');
+                break;
+            case 'selfie':
+                p(rx, ry - 4, 3, 5, '#333'); p(rx + 1, ry - 3, 1, 1, '#8fe3ff');
+                p(hands[0][0], hands[0][1] + up - 2, 1, 2, C.skin); p(hands[0][0] + 2, hands[0][1] + up - 2, 1, 2, C.skin);
+                break;
+            case 'muscle':
+                p(-12, -25 + up, 3, 3, C.skin); p(9, -25 + up, 3, 3, C.skin);
+                break;
         }
     }
 
@@ -449,11 +557,266 @@ document.addEventListener('DOMContentLoaded', () => {
             rect(ctx, 75, 56, 6, 6, '#ffffff'); rect(ctx, 76, 56, 4, 1, '#6b3d1f');
             rect(ctx, 100, 56, 6, 6, '#ffb6d0'); rect(ctx, 101, 56, 4, 1, '#ffffff');
             rect(ctx, 88, 58, 7, 4, '#fff1d6'); rect(ctx, 88, 58, 7, 1, '#e83e8c');
+        },
+
+        bathroom(t) {
+            rect(ctx, 0, 0, W, 66, '#dff1f7');
+            for (let y = 6; y < 64; y += 7) rect(ctx, 0, y, W, 1, '#c7e3ec');
+            for (let x = 0; x < W; x += 7) rect(ctx, x, 0, 1, 64, '#c7e3ec');
+            for (let y = 66; y < H; y += 6) {
+                for (let x = 0; x < W; x += 6) rect(ctx, x, y, 6, 6, ((x + y) / 6) % 2 ? '#e9eef1' : '#ffffff');
+            }
+            // mirror and sink
+            rect(ctx, 70, 8, 26, 24, '#aab6bb'); rect(ctx, 72, 10, 22, 20, '#e8f6fb');
+            rect(ctx, 76, 13, 6, 1, '#ffffff'); rect(ctx, 74, 15, 4, 1, '#ffffff');
+            rect(ctx, 70, 44, 26, 5, '#ffffff'); rect(ctx, 70, 44, 26, 1, '#c9d3d8');
+            rect(ctx, 79, 49, 8, 17, '#f4f7f8'); rect(ctx, 81, 40, 4, 4, '#aab6bb');
+            // toilet with a roll of paper
+            rect(ctx, 28, 46, 16, 20, '#ffffff'); rect(ctx, 27, 45, 18, 2, '#e3eaed'); rect(ctx, 40, 50, 2, 1, '#aab6bb');
+            rect(ctx, 26, 66, 20, 5, '#f4f7f8'); rect(ctx, 26, 66, 20, 1, '#c9d3d8');
+            rect(ctx, 30, 71, 12, 7, '#ffffff'); rect(ctx, 30, 77, 12, 1, '#c9d3d8');
+            rect(ctx, 50, 52, 5, 6, '#ffffff'); rect(ctx, 49, 51, 7, 1, '#aab6bb');
+            // towel and a rubber duck
+            rect(ctx, 104, 30, 2, 2, '#aab6bb'); rect(ctx, 102, 32, 14, 18, '#f39bbd'); rect(ctx, 102, 46, 14, 2, '#e83e8c');
+            rect(ctx, 88, 41, 4, 3, '#ffd84a'); rect(ctx, 91, 40, 2, 2, '#ffd84a'); rect(ctx, 93, 41, 1, 1, '#ff9f43');
+        },
+        toiletFront() {
+            // the bowl's rim in front of him, so he's clearly sitting on it
+            rect(ctx, 25, 70, 22, 3, '#ffffff'); rect(ctx, 25, 72, 22, 1, '#c9d3d8');
+            rect(ctx, 29, 73, 14, 5, '#f4f7f8'); rect(ctx, 29, 77, 14, 1, '#c9d3d8');
+        },
+        shower(t) {
+            rect(ctx, 0, 0, W, 70, '#e8f4f8');
+            for (let y = 4; y < 70; y += 8) {
+                for (let x = (y % 16 === 4 ? 0 : 4); x < W; x += 8) rect(ctx, x, y, 7, 7, '#d6ebf2');
+            }
+            rect(ctx, 0, 70, W, 18, '#c9d8de'); rect(ctx, 0, 70, W, 1, '#aab6bb');
+            rect(ctx, 60, 80, 8, 2, '#8a979c');
+            // pipe and shower head
+            rect(ctx, 63, 0, 2, 12, '#aab6bb'); rect(ctx, 58, 12, 12, 3, '#c0c6cc'); rect(ctx, 59, 15, 10, 1, '#8a979c');
+            // curtain rod and the bunched-up end of the curtain
+            rect(ctx, 14, 6, 100, 2, '#aab6bb');
+            for (let x = 14; x < 28; x += 3) rect(ctx, x, 8, 2, 70, x % 2 ? '#f39bbd' : '#e86a9a');
+            // soap shelf
+            rect(ctx, 100, 40, 14, 2, '#aab6bb'); rect(ctx, 102, 34, 4, 6, '#9fd6ff'); rect(ctx, 108, 36, 4, 4, '#ffd84a');
+            // steam
+            for (let i = 0; i < 3; i++) {
+                const ph = (t * 0.3 + i / 3) % 1;
+                ctx.globalAlpha = 0.5 * (1 - ph);
+                rect(ctx, 36 + i * 22 + Math.sin(ph * 6) * 3, 30 - ph * 20, 10, 4, '#ffffff');
+                ctx.globalAlpha = 1;
+            }
+        },
+        showerFront(t) {
+            // the drawn curtain, so only his head pokes out
+            for (let x = 30; x < 100; x += 4) {
+                rect(ctx, x, 58, 2, 28, '#f39bbd');
+                rect(ctx, x + 2, 58, 2, 28, '#e86a9a');
+            }
+            for (let x = 30; x < 100; x += 6) rect(ctx, x + 1, 59, 2, 2, '#ffffff');
+            rect(ctx, 30, 84, 70, 2, '#d1557f');
+        },
+
+        beach(t) {
+            rect(ctx, 0, 0, W, 24, '#7fc8ff'); rect(ctx, 0, 24, W, 20, '#a8dbff');
+            rect(ctx, 98, 8, 12, 12, '#ffd84a'); rect(ctx, 96, 11, 16, 6, '#ffd84a');
+            cloud(((t * 3) % 170) - 20, 12);
+            rect(ctx, 0, 44, W, 18, '#3fa3d9');
+            for (let i = 0; i < 6; i++) {
+                const x = ((i * 26 + t * 8) % 150) - 12;
+                rect(ctx, x, 48 + (i % 3) * 4, 8, 1, '#bfe8ff');
+            }
+            rect(ctx, 0, 60, W, 3, '#e9f7ff');
+            rect(ctx, 0, 62, W, 26, '#f2d59a');
+            for (let x = 4; x < W; x += 9) rect(ctx, x, 68 + (x % 4) * 4, 1, 1, '#d9b877');
+            // umbrella, towel, shell
+            rect(ctx, 20, 40, 2, 34, '#8a5a3c');
+            for (let i = 0; i < 6; i++) rect(ctx, 6 + i * 5, 36 + Math.abs(2.5 - i), 5, 5, i % 2 ? '#ffffff' : '#e8344e');
+            rect(ctx, 26, 76, 22, 6, '#5d9cec'); rect(ctx, 26, 78, 22, 1, '#ffffff');
+            rect(ctx, 108, 80, 4, 3, '#ffb6d0');
+        },
+        seaFront(t) {
+            // swimming: the sea fills the foreground up to his shoulders
+            rect(ctx, 0, 58, W, 30, '#3fa3d9');
+            for (let i = 0; i < 8; i++) {
+                const x = ((i * 19 + t * 10) % 150) - 12;
+                rect(ctx, x, 58 + (i % 4) * 7, 9, 1, '#bfe8ff');
+            }
+            for (let x = 0; x < W; x += 6) rect(ctx, x + (Math.floor(t * 4) % 2) * 3, 57, 3, 1, '#ffffff');
+        },
+
+        gym(t) {
+            rect(ctx, 0, 0, W, 66, '#d9dde3');
+            rect(ctx, 0, 40, W, 2, '#e83e8c');
+            rect(ctx, 0, 66, W, 22, '#3f444c');
+            for (let x = 0; x < W; x += 16) rect(ctx, x, 66, 1, 22, '#353a41');
+            // mirror wall
+            rect(ctx, 30, 6, 60, 30, '#aab6bb'); rect(ctx, 32, 8, 56, 26, '#eef4f7');
+            rect(ctx, 40, 12, 10, 1, '#ffffff'); rect(ctx, 36, 15, 6, 1, '#ffffff');
+            // poster
+            rect(ctx, 6, 10, 18, 22, '#1e1e22'); rect(ctx, 9, 14, 12, 2, '#ffd84a'); rect(ctx, 9, 19, 9, 2, '#ffffff'); rect(ctx, 9, 24, 11, 2, '#e83e8c');
+            // dumbbell rack
+            rect(ctx, 4, 50, 30, 3, '#555'); rect(ctx, 6, 53, 2, 13, '#555'); rect(ctx, 30, 53, 2, 13, '#555');
+            for (let i = 0; i < 4; i++) { rect(ctx, 6 + i * 7, 46, 2, 4, '#222'); rect(ctx, 10 + i * 7, 46, 2, 4, '#222'); rect(ctx, 8 + i * 7, 47, 2, 2, '#888'); }
+            // treadmill
+            rect(ctx, 96, 70, 30, 6, '#222'); rect(ctx, 98, 68, 26, 2, '#555');
+            rect(ctx, 120, 44, 3, 26, '#555'); rect(ctx, 112, 42, 14, 6, '#333'); rect(ctx, 114, 44, 6, 2, Math.floor(t * 2) % 2 ? '#4cd964' : '#2e8b4a');
+        },
+
+        office(t) {
+            rect(ctx, 0, 0, W, 66, '#efe6d8');
+            rect(ctx, 0, 66, W, 22, '#7d8a99');
+            for (let y = 70; y < H; y += 6) rect(ctx, 0, y, W, 1, '#73808e');
+            // window with the city
+            rect(ctx, 6, 8, 40, 30, '#ffffff'); rect(ctx, 8, 10, 36, 26, '#9fd6ff');
+            [[8, 20, 8], [17, 14, 7], [25, 22, 9], [35, 17, 9]].forEach(([x, y, w]) => {
+                rect(ctx, x, y, w, 36 - y, '#6c7a8c');
+                for (let wy = y + 2; wy < 34; wy += 4) rect(ctx, x + 2, wy, 2, 2, '#ffe9a8');
+            });
+            rect(ctx, 25, 10, 2, 26, '#ffffff');
+            // clock
+            rect(ctx, 60, 8, 10, 10, '#ffffff'); rect(ctx, 60, 8, 10, 1, '#555'); rect(ctx, 64, 10, 1, 4, '#333');
+            rect(ctx, 64, 13, 1 + Math.floor(t) % 3, 1, '#e83e8c');
+            // desk, monitor, mug, plant
+            rect(ctx, 80, 52, 46, 3, '#8a5a3c'); rect(ctx, 82, 55, 3, 14, '#6b4430'); rect(ctx, 120, 55, 3, 14, '#6b4430');
+            rect(ctx, 90, 34, 22, 16, '#222'); rect(ctx, 92, 36, 18, 12, '#3a6ea5');
+            for (let y = 38; y < 47; y += 3) rect(ctx, 94, y, 6 + ((y + Math.floor(t * 2)) % 7), 1, '#9fd6ff');
+            rect(ctx, 99, 50, 4, 2, '#222');
+            rect(ctx, 114, 47, 4, 5, '#ffffff'); rect(ctx, 118, 48, 1, 2, '#ffffff');
+            rect(ctx, 54, 54, 8, 12, '#c8762e'); rect(ctx, 52, 44, 12, 10, '#4f9e52'); rect(ctx, 56, 40, 4, 4, '#5fb862');
+        },
+
+        cinema(t) {
+            rect(ctx, 0, 0, W, H, '#1b1626');
+            // screen with a flickering film
+            rect(ctx, 6, 4, 116, 34, '#2b2238');
+            const hue = ['#5b6fa8', '#a85b8f', '#5ba88a', '#a8935b'][Math.floor(t / 1.5) % 4];
+            rect(ctx, 8, 6, 112, 30, hue);
+            for (let y = 6; y < 36; y += 4) if ((Math.floor(t * 10) + y) % 7 === 0) rect(ctx, 8, y, 112, 1, '#ffffff');
+            rect(ctx, 50, 18, 8, 10, '#1b1626'); rect(ctx, 70, 16, 8, 12, '#1b1626');
+            // projector beam
+            ctx.globalAlpha = 0.08;
+            for (let i = 0; i < 12; i++) rect(ctx, 64 - i * 5, 36 + i * 3, 10 + i * 10, 3, '#ffffff');
+            ctx.globalAlpha = 1;
+            // a row of seats behind him and the aisle lights
+            for (let x = 2; x < W; x += 14) {
+                rect(ctx, x, 54, 12, 10, '#a3203a'); rect(ctx, x, 54, 12, 2, '#c43150'); rect(ctx, x + 1, 64, 10, 3, '#7a1830');
+            }
+            rect(ctx, 0, 67, W, 21, '#140f1c');
+            for (let x = 4; x < W; x += 12) rect(ctx, x, 86, 2, 1, '#ffd84a');
+        },
+
+        supermarket(t) {
+            rect(ctx, 0, 0, W, 66, '#f4f6f8');
+            rect(ctx, 0, 0, W, 6, '#e83e8c');
+            for (let x = 4; x < W; x += 30) rect(ctx, x, 1, 20, 4, '#ffffff');
+            for (let y = 66; y < H; y += 8) {
+                for (let x = 0; x < W; x += 8) rect(ctx, x, y, 8, 8, ((x + y) / 8) % 2 ? '#dfe3e6' : '#eceff1');
+            }
+            // shelves stacked with products, one shelf of Bournville
+            const colors = ['#e07a5f', '#f2c94c', '#5d9cec', '#4cd964', '#ff8fb8', '#9b6bd1'];
+            rect(ctx, 4, 12, 120, 54, '#c9d3d8');
+            [20, 36, 52].forEach((y, row) => {
+                rect(ctx, 4, y + 10, 120, 2, '#8a979c');
+                for (let x = 6; x < 122; x += 6) {
+                    const choc = row === 1 && x > 60 && x < 100;
+                    rect(ctx, x, y + (x % 4 ? 3 : 1), 5, x % 4 ? 7 : 9, choc ? C.wrapper : colors[(x / 6 + row) % colors.length]);
+                    if (choc) rect(ctx, x, y + 5, 5, 1, C.gold);
+                }
+            });
+            rect(ctx, 62, 8, 34, 6, '#4b1f5c'); rect(ctx, 64, 10, 30, 2, C.gold);
+            // trolley
+            rect(ctx, 100, 64, 22, 12, '#aab6bb'); rect(ctx, 101, 65, 20, 10, '#dfe3e6');
+            for (let x = 102; x < 120; x += 3) rect(ctx, x, 65, 1, 10, '#aab6bb');
+            rect(ctx, 98, 60, 2, 6, '#555'); rect(ctx, 102, 76, 3, 3, '#222'); rect(ctx, 117, 76, 3, 3, '#222');
+        },
+
+        rooftop(t) {
+            rect(ctx, 0, 0, W, 30, '#141a3a'); rect(ctx, 0, 30, W, 30, '#20295a');
+            for (let i = 0; i < 24; i++) {
+                const x = (i * 37) % W, y = (i * 23) % 44;
+                if ((Math.floor(t * 2) + i) % 5) rect(ctx, x, y, 1, 1, '#ffffff');
+            }
+            rect(ctx, 100, 6, 10, 10, '#fff6c8'); rect(ctx, 104, 6, 6, 6, '#141a3a');
+            // skyline with lit windows
+            [[0, 36, 18], [18, 28, 14], [34, 40, 20], [56, 24, 12], [70, 34, 22], [94, 30, 16], [112, 38, 16]].forEach(([x, y, w], i) => {
+                rect(ctx, x, y, w, 60 - y, '#0d1128');
+                for (let wy = y + 3; wy < 58; wy += 5) {
+                    for (let wx = x + 2; wx < x + w - 2; wx += 4) {
+                        if ((wx + wy + i) % 3) rect(ctx, wx, wy, 2, 2, '#ffd36b');
+                    }
+                }
+            });
+            // fairy lights and the parapet
+            for (let x = 0; x < W; x += 8) {
+                const sag = Math.round(Math.sin((x / W) * Math.PI) * 4);
+                rect(ctx, x, 46 + sag, 2, 2, ['#ff8fb8', '#ffd84a', '#9fd6ff'][(x / 8 + Math.floor(t * 2)) % 3]);
+            }
+            rect(ctx, 0, 60, W, 6, '#6b6f7a'); rect(ctx, 0, 60, W, 1, '#8a8f9c');
+            rect(ctx, 0, 66, W, 22, '#4a4e58');
+        },
+
+        party(t) {
+            rect(ctx, 0, 0, W, H, '#241238');
+            // rotating coloured beams
+            const beams = ['#ff4fa0', '#4fd1ff', '#ffe04f'];
+            ctx.globalAlpha = 0.18;
+            for (let i = 0; i < 3; i++) {
+                const a = t * 1.2 + i * 2.1;
+                for (let s = 0; s < 40; s++) {
+                    rect(ctx, 64 + Math.cos(a) * s * 2.2, 10 + Math.abs(Math.sin(a)) * s * 1.6 + s * 0.6, 4, 4, beams[i]);
+                }
+            }
+            ctx.globalAlpha = 1;
+            // disco ball
+            rect(ctx, 63, 0, 1, 4, '#888');
+            rect(ctx, 59, 4, 9, 9, '#c0c6cc');
+            for (let i = 0; i < 4; i++) rect(ctx, 60 + ((i * 3 + Math.floor(t * 6)) % 8), 5 + (i * 2) % 7, 1, 1, '#ffffff');
+            // speakers
+            [4, 112].forEach(x => {
+                rect(ctx, x, 40, 12, 26, '#111'); rect(ctx, x + 3, 44, 6, 6, '#333'); rect(ctx, x + 2, 54, 8, 8, '#333');
+                rect(ctx, x + 4, 56 + (Math.floor(t * 8) % 2), 4, 4, '#555');
+            });
+            // flashing dance floor
+            for (let y = 66; y < H; y += 6) {
+                for (let x = 0; x < W; x += 8) {
+                    rect(ctx, x, y, 8, 6, ['#5a2a8a', '#ff4fa0', '#4fd1ff', '#3a1a5c'][(x / 8 + y / 6 + Math.floor(t * 3)) % 4]);
+                }
+            }
+            // confetti
+            for (let i = 0; i < 14; i++) {
+                const ph = (t * 0.4 + i / 14) % 1;
+                rect(ctx, (i * 41) % W + Math.sin(ph * 8) * 2, ph * 66, 1, 2, beams[i % 3]);
+            }
+        },
+
+        car(t) {
+            rect(ctx, 0, 0, W, 40, '#9fd6ff');
+            cloud(((t * 3 + 40) % 170) - 20, 8);
+            [[0, 16, 20, '#c9b8d9'], [20, 22, 16, '#e3c9b0'], [36, 12, 18, '#b8cfd9'], [90, 18, 20, '#d9c0c9'], [110, 24, 18, '#c9d9b8']].forEach(([x, y, w, col]) => {
+                rect(ctx, x, y, w, 40 - y, col);
+                for (let wy = y + 3; wy < 38; wy += 5) for (let wx = x + 2; wx < x + w - 2; wx += 5) rect(ctx, wx, wy, 2, 2, '#ffffff');
+            });
+            rect(ctx, 0, 40, W, 10, '#c9c9c9'); rect(ctx, 0, 40, W, 1, '#aaaaaa');
+            rect(ctx, 0, 50, W, 38, '#5a5f66');
+            for (let x = 0; x < W; x += 16) rect(ctx, (x + Math.floor(t * 4)) % (W + 16) - 8, 82, 8, 1, '#f2f2f2');
+            // his car, parked
+            rect(ctx, 6, 56, 50, 12, '#e8344e'); rect(ctx, 14, 48, 32, 9, '#e8344e');
+            rect(ctx, 17, 50, 12, 6, '#bfe4ff'); rect(ctx, 31, 50, 12, 6, '#bfe4ff');
+            rect(ctx, 6, 60, 50, 1, '#b8233a'); rect(ctx, 52, 58, 4, 2, '#ffd84a'); rect(ctx, 6, 58, 3, 2, '#ff6b6b');
+            rect(ctx, 12, 66, 8, 8, '#222'); rect(ctx, 14, 68, 4, 4, '#888');
+            rect(ctx, 42, 66, 8, 8, '#222'); rect(ctx, 44, 68, 4, 4, '#888');
+            // lamp post
+            rect(ctx, 110, 30, 2, 36, '#444'); rect(ctx, 106, 28, 10, 3, '#444'); rect(ctx, 107, 31, 8, 1, '#fff3c4');
         }
     };
 
     // Where Ridit stands by default in each room
-    const HOME_X = { bedroom: 78, kitchen: 46, living_room: 90, outside: 64, cafe: 50 };
+    const HOME_X = {
+        bedroom: 78, kitchen: 46, living_room: 90, outside: 64, cafe: 50,
+        bathroom: 62, shower: 64, beach: 70, gym: 62, office: 40, cinema: 64,
+        supermarket: 54, rooftop: 64, party: 64, car: 84
+    };
 
     // ---- Effects --------------------------------------------------------
 
@@ -540,6 +903,94 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             case 'notify':
                 if (t % 2.4 < 1.2) glyph(ctx, 'bubble', hx + 9, hy - 3, '#ffffff');
+                break;
+            case 'water':
+                for (let i = 0; i < 7; i++) {
+                    const ph = (t * 2 + i / 7) % 1;
+                    rect(ctx, 58 + i * 2, 16 + ph * (hy - 12), 1, 2, '#6cc4ff');
+                }
+                break;
+            case 'foam':
+                for (let i = 0; i < 3; i++) {
+                    const ph = (t * 0.8 + i / 3) % 1;
+                    ctx.globalAlpha = 1 - ph;
+                    rect(ctx, hx + 2 + i * 2, hy + 18 - ph * 8, 2, 2, '#ffffff');
+                }
+                ctx.globalAlpha = 1;
+                break;
+            case 'steam':
+                for (let i = 0; i < 3; i++) {
+                    const ph = (t * 0.8 + i / 3) % 1;
+                    ctx.globalAlpha = 0.8 * (1 - ph);
+                    rect(ctx, hx + 15 + i * 2 + Math.sin(ph * 6), hy + 20 - ph * 14, 3, 2, '#ffffff');
+                }
+                ctx.globalAlpha = 1;
+                break;
+            case 'dust':
+                for (let i = 0; i < 3; i++) {
+                    const ph = (t * 1.2 + i / 3) % 1;
+                    ctx.globalAlpha = 0.7 * (1 - ph);
+                    rect(ctx, hx + 8 + ph * 10 + i * 3, GROUND - 3 - ph * 4, 3, 2, '#d8cbb8');
+                }
+                ctx.globalAlpha = 1;
+                break;
+            case 'speed':
+                for (let i = 0; i < 3; i++) {
+                    const len = 6 + ((Math.floor(t * 10) + i) % 3) * 3;
+                    rect(ctx, hx - 14 - len, hy + 18 + i * 6, len, 1, '#ffffff');
+                    rect(ctx, hx + 14, hy + 21 + i * 6, len, 1, '#ffffff');
+                }
+                break;
+            case 'ha':
+                glyph(ctx, 'ha', hx + (Math.floor(t * 3) % 2 ? 10 : -17), hy - 2 - (Math.floor(t * 3) % 2) * 4, '#e83e8c');
+                break;
+            case 'thought':
+                rect(ctx, hx + 9, hy - 1, 1, 1, '#ffffff'); rect(ctx, hx + 11, hy - 4, 2, 2, '#ffffff');
+                rect(ctx, hx + 13, hy - 14, 14, 8, '#ffffff');
+                for (let i = 0; i <= Math.floor(t * 2) % 3; i++) rect(ctx, hx + 16 + i * 3, hy - 10, 2, 1, '#5d429a');
+                break;
+            case 'dots':
+                for (let i = 0; i <= Math.floor(t * 2) % 3; i++) rect(ctx, hx + 11 + i * 3, hy - 3, 2, 2, '#5d429a');
+                break;
+            case 'snow':
+                for (let i = 0; i < 12; i++) {
+                    const ph = (t * 0.25 + i / 12) % 1;
+                    glyph(ctx, 'flake', ((i * 47) % W) + Math.sin(ph * 6 + i) * 3, ph * H, '#ffffff');
+                }
+                break;
+            case 'flash':
+                if ((t % 2) < 0.12) {
+                    ctx.globalAlpha = 0.7;
+                    rect(ctx, 0, 0, W, H, '#ffffff');
+                    ctx.globalAlpha = 1;
+                }
+                break;
+            case 'kissheart': {
+                const ph = (t * 0.6) % 1;
+                ctx.globalAlpha = 1 - ph * 0.7;
+                glyph(ctx, 'heart', hx + 8 + ph * 34, hy + 14 - ph * 18, C.heart);
+                ctx.globalAlpha = 1;
+                break;
+            }
+            case 'tearsBig':
+                for (let i = 0; i < 4; i++) {
+                    const ph = (t * 2 + i / 4) % 1;
+                    rect(ctx, hx - 7 - ph * 4, hy + 14 + ph * 12, 2, 2, '#6cc4ff');
+                    rect(ctx, hx + 5 + ph * 4, hy + 14 + ph * 12, 2, 2, '#6cc4ff');
+                }
+                break;
+            case 'scribble':
+                glyph(ctx, 'scribble', hx + 9 + (Math.floor(t * 6) % 2), hy - 6, '#333');
+                break;
+            case 'splash':
+                for (let i = 0; i < 4; i++) {
+                    const ph = (t * 1.5 + i / 4) % 1;
+                    rect(ctx, hx - 14 + i * 9 + ph * 2, 56 - Math.sin(ph * Math.PI) * 5, 2, 1, '#ffffff');
+                }
+                break;
+            case 'exclaim2':
+                glyph(ctx, 'exclaim', hx + 9, hy - 8, '#e83e8c');
+                glyph(ctx, 'exclaim', hx + 12, hy - 9, '#e83e8c');
                 break;
         }
     }
@@ -726,6 +1177,312 @@ document.addEventListener('DOMContentLoaded', () => {
             pose.screenOn = Math.floor(t * 5) % 7 !== 0;
             return { pose, x: HOME_X[loc], fx: ['notify'] };
         },
+        // ---- the second wave of animations ----
+        showering(t) {
+            const pose = defaultPose();
+            pose.eyes = 'closed';
+            pose.mouth = Math.floor(t * 3) % 2 ? 'open' : 'o';
+            pose.arms = Math.floor(t * 2) % 2 ? 'up' : 'scratch';
+            return { pose, x: 64, room: 'shower', front: 'showerFront', fx: ['water', 'notes'] };
+        },
+        toilet(t) {
+            const pose = defaultPose();
+            pose.legs = 'sit';
+            pose.arms = 'phone';
+            pose.item = 'phone';
+            pose.eyes = blinkEyes(t, 'down');
+            pose.mouth = (t % 4) < 1 ? 'smile' : 'flat';
+            return { pose, x: 36, groundY: 76, room: 'bathroom', front: 'toiletFront', fx: ['dots'] };
+        },
+        brushing(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'brush';
+            pose.item = 'toothbrush';
+            pose.mouth = 'o';
+            pose.eyes = blinkEyes(t, 'open');
+            pose.look = -1;
+            return { pose, x: HOME_X[loc] + (Math.floor(t * 8) % 2), fx: ['foam'] };
+        },
+        cooking(t, loc) {
+            const pose = defaultPose();
+            pose.arms = Math.floor(t * 2) % 2 ? 'pan' : 'panUp';
+            pose.item = 'pan';
+            pose.mouth = 'smile';
+            pose.eyes = blinkEyes(t, 'open');
+            return { pose, x: HOME_X[loc], fx: ['steam'] };
+        },
+        cleaning(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'broom';
+            pose.item = 'broom';
+            pose.eyes = blinkEyes(t, 'down');
+            pose.mouth = 'flat';
+            return { pose, x: HOME_X[loc] + Math.round(Math.sin(t * 4) * 3), fx: ['dust'] };
+        },
+        working(t, loc) {
+            const pose = defaultPose();
+            pose.legs = 'sit';
+            pose.arms = 'type';
+            pose.item = 'laptop';
+            pose.eyes = blinkEyes(t, 'down');
+            pose.brows = (t % 5) < 2 ? 'angry' : null;
+            pose.mouth = 'flat';
+            return { pose, x: HOME_X[loc], groundY: 78, fx: ['dots'] };
+        },
+        gaming(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'hold';
+            pose.item = 'controller';
+            pose.eyes = 'wide';
+            pose.brows = 'angry';
+            pose.mouth = Math.floor(t * 3) % 2 ? 'o' : 'flat';
+            return { pose, x: HOME_X[loc] + (Math.floor(t * 10) % 2), fx: ['sweat'] };
+        },
+        reading(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'hold';
+            pose.item = 'book';
+            pose.eyes = blinkEyes(t, 'down');
+            pose.look = Math.floor(t * 1.5) % 2 ? -1 : 0;
+            pose.mouth = (t % 6) < 1 ? 'o' : 'flat';
+            return { pose, x: HOME_X[loc] };
+        },
+        singing(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'mic';
+            pose.item = 'mic';
+            pose.eyes = (t % 3) < 1.5 ? 'closed' : 'happy';
+            pose.mouth = Math.floor(t * 4) % 2 ? 'open' : 'o';
+            return { pose, x: HOME_X[loc] + Math.round(Math.sin(t * 2) * 2), fx: ['notes'] };
+        },
+        guitar(t, loc) {
+            const pose = defaultPose();
+            pose.arms = Math.floor(t * 5) % 2 ? 'guitar' : 'strum';
+            pose.item = 'guitar';
+            pose.eyes = 'closed';
+            pose.mouth = 'smile';
+            pose.bob = Math.floor(t * 2) % 2;
+            return { pose, x: HOME_X[loc], fx: ['notes'] };
+        },
+        exercising(t, loc) {
+            const pose = defaultPose();
+            const rep = Math.floor(t * 1.5) % 2;
+            pose.arms = rep ? 'liftUp' : 'liftDown';
+            pose.item = 'dumbbell';
+            pose.brows = 'angry';
+            pose.mouth = rep ? 'o' : 'flat';
+            pose.eyes = rep ? 'closed' : 'open';
+            return { pose, x: HOME_X[loc], fx: ['sweat'] };
+        },
+        running(t, loc) {
+            const pose = defaultPose();
+            const span = 30, speed = 40;
+            const d = (t * speed) % (span * 4);
+            const offset = d < span * 2 ? d - span : span * 3 - d;
+            const step = Math.floor(t * 10) % 2;
+            pose.legs = step ? 'runA' : 'runB';
+            pose.arms = step ? 'runA' : 'runB';
+            pose.mouth = 'o';
+            pose.bob = step;
+            return { pose, x: Math.round(HOME_X[loc] + offset), flip: d >= span * 2, fx: ['speed', 'sweat'] };
+        },
+        waving(t, loc) {
+            const pose = defaultPose();
+            pose.arms = Math.floor(t * 4) % 2 ? 'wave1' : 'wave2';
+            pose.eyes = 'happy';
+            pose.mouth = 'big';
+            return { pose, x: HOME_X[loc] };
+        },
+        kissing(t, loc) {
+            const pose = defaultPose();
+            const blow = (t % 1.6) > 0.8;
+            pose.arms = blow ? 'blow' : 'kiss';
+            pose.mouth = 'pout';
+            pose.eyes = 'closed';
+            pose.blush = true;
+            return { pose, x: HOME_X[loc], fx: ['kissheart'] };
+        },
+        proposing(t, loc) {
+            const pose = defaultPose();
+            pose.legs = 'sit';
+            pose.arms = 'offer';
+            pose.item = 'ring';
+            pose.eyes = 'sparkle';
+            pose.blush = true;
+            pose.mouth = 'smile';
+            return { pose, x: HOME_X[loc], fx: ['sparkle', 'hearts'] };
+        },
+        flowers(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'hold';
+            pose.item = 'flowers';
+            pose.eyes = 'happy';
+            pose.blush = true;
+            pose.bob = Math.floor(t * 2) % 2;
+            return { pose, x: HOME_X[loc], fx: ['sparkle'] };
+        },
+        gift(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'hold';
+            pose.item = 'gift';
+            pose.eyes = 'happy';
+            pose.mouth = 'big';
+            return { pose, x: HOME_X[loc], jump: Math.floor(t * 3) % 2 ? -1 : 0, fx: ['sparkle'] };
+        },
+        crying(t, loc) {
+            const pose = defaultPose();
+            pose.eyes = 'closed';
+            pose.brows = 'sad';
+            pose.mouth = 'open';
+            pose.bob = Math.floor(t * 6) % 2;
+            return { pose, x: HOME_X[loc], fx: ['tearsBig'] };
+        },
+        laughing(t, loc) {
+            const pose = defaultPose();
+            pose.eyes = 'happy';
+            pose.mouth = 'big';
+            pose.arms = 'hold';
+            pose.bob = Math.floor(t * 8) % 2 * 2;
+            return { pose, x: HOME_X[loc], fx: ['ha'] };
+        },
+        blushing(t, loc) {
+            const pose = defaultPose();
+            pose.eyes = 'down';
+            pose.blush = true;
+            pose.tint = 0.3;
+            pose.tintColor = '#ff7aa2';
+            pose.arms = 'pray';
+            pose.mouth = 'wavy';
+            pose.look = Math.floor(t) % 2;
+            return { pose, x: HOME_X[loc] + (Math.floor(t * 1.5) % 2), fx: ['sparkle'] };
+        },
+        thinking(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'chin';
+            pose.eyes = 'up';
+            pose.mouth = 'flat';
+            pose.brows = (t % 3) < 1.5 ? 'up' : null;
+            return { pose, x: HOME_X[loc], fx: ['thought'] };
+        },
+        shocked(t, loc) {
+            const pose = defaultPose();
+            pose.eyes = 'wide';
+            pose.brows = 'up';
+            pose.mouth = 'jaw';
+            pose.arms = 'shrug';
+            pose.tint = t < 0.4 ? 0.5 : 0;
+            pose.tintColor = '#ffffff';
+            return { pose, x: HOME_X[loc], jump: t < 0.3 ? -3 : 0, fx: ['exclaim2'] };
+        },
+        sulking(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'cross';
+            pose.brows = 'angry';
+            pose.mouth = 'pout';
+            pose.eyes = 'down';
+            pose.look = -1;
+            return { pose, x: HOME_X[loc], fx: ['scribble'] };
+        },
+        begging(t, loc) {
+            const pose = defaultPose();
+            pose.legs = 'sit';
+            pose.arms = 'pray';
+            pose.eyes = 'sparkle';
+            pose.brows = 'sad';
+            pose.mouth = 'wavy';
+            pose.bob = Math.floor(t * 3) % 2;
+            return { pose, x: HOME_X[loc], fx: ['sparkle'] };
+        },
+        apologizing(t, loc) {
+            const pose = defaultPose();
+            const bow = (t % 2) < 1;
+            pose.arms = 'pray';
+            pose.eyes = 'closed';
+            pose.brows = 'sad';
+            pose.mouth = 'frown';
+            pose.bob = bow ? 3 : 0;
+            return { pose, x: HOME_X[loc], fx: ['sweat'] };
+        },
+        shrugging(t, loc) {
+            const pose = defaultPose();
+            const up = Math.floor(t * 1.5) % 2;
+            pose.arms = up ? 'shrug' : 'shrugLow';
+            pose.brows = 'up';
+            pose.mouth = 'wavy';
+            pose.eyes = blinkEyes(t, 'open');
+            pose.bob = up ? 0 : 1;
+            return { pose, x: HOME_X[loc] };
+        },
+        facepalm(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'face';
+            pose.mouth = 'frown';
+            pose.brows = 'angry';
+            pose.bob = 1;
+            return { pose, x: HOME_X[loc], fx: ['sweat'] };
+        },
+        hiding(t, loc) {
+            const pose = defaultPose();
+            pose.eyes = 'open';
+            pose.look = Math.floor(t * 1.2) % 2 ? -1 : 1;
+            pose.bob = Math.floor(t * 0.8) % 2 ? 0 : 2;
+            return { pose, x: HOME_X[loc] + (Math.floor(t * 6) % 7 === 0 ? 1 : 0), front: 'box' };
+        },
+        sick(t, loc) {
+            const pose = defaultPose();
+            pose.item = 'thermometer';
+            pose.eyes = 'half';
+            pose.mouth = 'flat';
+            pose.brows = 'sad';
+            pose.tint = 0.3;
+            pose.tintColor = '#8bc34a';
+            pose.arms = 'hold';
+            pose.bob = Math.floor(t) % 2;
+            return { pose, x: HOME_X[loc], fx: ['sweat'] };
+        },
+        sleepy(t, loc) {
+            const pose = defaultPose();
+            const nod = (t % 3) > 2;
+            pose.eyes = nod ? 'closed' : 'half';
+            pose.mouth = (t % 6) < 1 ? 'open' : 'flat';
+            pose.bob = nod ? 2 : 0;
+            return { pose, x: HOME_X[loc], fx: nod ? ['zzz'] : [] };
+        },
+        selfie(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'selfie';
+            pose.item = 'selfie';
+            pose.eyes = (t % 2) < 1 ? 'happy' : 'open';
+            pose.mouth = (t % 2) < 1 ? 'pout' : 'big';
+            return { pose, x: HOME_X[loc], fx: ['flash'] };
+        },
+        flexing(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'flex';
+            pose.item = 'muscle';
+            pose.brows = 'angry';
+            pose.mouth = 'big';
+            pose.bob = Math.floor(t * 2) % 2;
+            return { pose, x: HOME_X[loc], fx: ['sparkle'] };
+        },
+        shivering(t, loc) {
+            const pose = defaultPose();
+            pose.arms = 'cross';
+            pose.eyes = 'closed';
+            pose.mouth = Math.floor(t * 8) % 2 ? 'wavy' : 'flat';
+            pose.tint = 0.3;
+            pose.tintColor = '#6cc4ff';
+            return { pose, x: HOME_X[loc] + (Math.floor(t * 14) % 2 ? 1 : -1), fx: ['snow'] };
+        },
+        swimming(t) {
+            const pose = defaultPose();
+            const stroke = Math.floor(t * 2.5) % 2;
+            pose.arms = stroke ? 'swimA' : 'swimB';
+            pose.eyes = stroke ? 'closed' : 'happy';
+            pose.mouth = 'o';
+            return { pose, x: 64 + Math.round(Math.sin(t * 0.8) * 20), groundY: 76, room: 'beach', front: 'seaFront', fx: ['splash'] };
+        },
+
         // A quick jolt when she taps him
         poke(t, loc) {
             const pose = defaultPose();
@@ -794,6 +1551,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             hx = frame.x;
             hy = gy - 40 + up;
+        }
+
+        if (frame.front === 'box') {
+            // a cardboard box he's hiding in, peeking over the top
+            const gy = frame.groundY || GROUND;
+            rect(ctx, frame.x - 12, gy - 25, 24, 26, '#c8955a');
+            rect(ctx, frame.x - 12, gy - 25, 24, 2, '#a8763e');
+            rect(ctx, frame.x - 2, gy - 25, 4, 12, '#e3c08a');
+            rect(ctx, frame.x - 9, gy - 12, 8, 1, '#8a5a2e'); rect(ctx, frame.x - 9, gy - 10, 5, 1, '#8a5a2e');
+        } else if (frame.front) {
+            ROOMS[frame.front](now / 1000);
         }
 
         (frame.fx || []).forEach(name => drawEffect(name, now / 1000, hx, hy));
