@@ -287,13 +287,20 @@
         <div class="container pocket-container">
             <div class="pocket-topbar">
                 <button id="pocket-back-btn" class="back-btn">&larr; Back</button>
-                <button id="pocket-restart-btn" class="pocket-restart-btn">New story 🔄</button>
+                <div class="pocket-topbar-right">
+                    <button id="pocket-shelf-btn" class="pocket-restart-btn">Stories 📚</button>
+                    <button id="pocket-restart-btn" class="pocket-restart-btn">New story ✨</button>
+                </div>
             </div>
             <div class="pocket-stage">
                 <canvas id="pocket-canvas" width="128" height="88" aria-label="Pixel Ridit"></canvas>
                 <div id="pocket-speech" class="pocket-speech" style="display: none;"></div>
             </div>
             <div id="pocket-log" class="pocket-log" aria-live="polite"></div>
+            <div id="pocket-shelf" class="pocket-shelf" style="display: none;">
+                <p class="pocket-shelf-title">Your stories</p>
+                <div id="pocket-shelf-list" class="pocket-shelf-list"></div>
+            </div>
             <div id="pocket-suggestions" class="pocket-suggestions"></div>
             <form id="pocket-form" class="pocket-form" autocomplete="off">
                 <input type="text" id="pocket-input" placeholder="What do you do?" maxlength="120" enterkeyhint="send">
