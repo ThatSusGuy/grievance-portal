@@ -578,7 +578,16 @@ function adventureTurn(body) {
   if (!result.ok) return { status: 'error', code: result.code, detail: result.detail };
 
   var reply = normalizeAdventureReply(result.text);
-  if (!reply) return { status: 'error', code: 'bad_reply', detail: String(result.text).slice(0, 200) };
+  if (!reply) {
+    // One more go: an unreadable reply is usually a one-off
+    console.log('Pocket Ridit unreadable reply, retrying: ' + result.text);
+    var retry = callGemini(apiKey, request, props, cache);
+    if (retry.ok) reply = normalizeAdventureReply(retry.text);
+    if (!reply) {
+      if (retry.ok) console.log('Pocket Ridit unreadable reply again: ' + retry.text);
+      return { status: 'error', code: 'bad_reply', detail: String(result.text).slice(-200) };
+    }
+  }
   return { status: 'success', reply: reply };
 }
 
@@ -691,18 +700,74 @@ function geminiText(json) {
   return text || null;
 }
 
-// Parses and cleans the model's JSON so the page always gets a usable turn
-function normalizeAdventureReply(text) {
-  var data = null;
-  var cleaned = String(text || '').replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '');
-  try {
-    data = JSON.parse(cleaned);
-  } catch (err) {
-    var match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) {
-      try { data = JSON.parse(match[0]); } catch (err2) { data = null; }
+// Reads the model's JSON even when it's slightly broken: wrapped in
+// markdown, with raw line breaks inside strings, sent twice in a row,
+// followed by chatter, or cut off part-way through
+function parseAdventureJson(text) {
+  var cleaned = text.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
+  var flattened = cleaned.replace(/[\u0000-\u001F]+/g, ' ');
+  var attempts = [cleaned, flattened, firstJsonObject(cleaned), firstJsonObject(flattened)];
+  for (var i = 0; i < attempts.length; i++) {
+    if (!attempts[i]) continue;
+    try { return JSON.parse(attempts[i]); } catch (err) { /* try the next form */ }
+  }
+  return salvageAdventureFields(flattened);
+}
+
+// The first complete {...} in the text, respecting braces inside strings
+function firstJsonObject(text) {
+  var start = text.indexOf('{');
+  if (start === -1) return null;
+  var depth = 0, inString = false, escaped = false;
+  for (var i = start; i < text.length; i++) {
+    var ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
     }
   }
+  return null;
+}
+
+// Last resort for a cut-off reply: pull out whatever fields made it through
+function salvageAdventureFields(text) {
+  function field(name) {
+    var m = text.match(new RegExp('"' + name + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)("?)'));
+    if (!m) return null;
+    var value;
+    try { value = JSON.parse('"' + m[1] + '"'); } catch (err) { value = m[1]; }
+    return { value: value, complete: m[2] === '"' };
+  }
+  var narration = field('narration');
+  if (!narration || narration.value.length < 20) return null;
+  var story = narration.value;
+  if (!narration.complete) {
+    // cut off mid-sentence: keep the finished sentences only
+    var end = Math.max(story.lastIndexOf('. '), story.lastIndexOf('! '), story.lastIndexOf('? '));
+    if (end < 20) return null;
+    story = story.slice(0, end + 1);
+  }
+  var animation = field('animation'), location = field('location'), speech = field('speech');
+  return {
+    narration: story,
+    animation: animation && animation.complete ? animation.value : 'idle',
+    location: location && location.complete ? location.value : '',
+    speech: speech && speech.complete ? speech.value : '',
+    suggestions: []
+  };
+}
+
+// Parses and cleans the model's JSON so the page always gets a usable turn
+function normalizeAdventureReply(text) {
+  var data = parseAdventureJson(String(text || ''));
   if (Array.isArray(data)) data = data[0];
   if (!data || typeof data !== 'object') return null;
 
