@@ -266,9 +266,10 @@
     <!-- ======== Pocket Ridit Screen ======== -->
     <main id="pocket-ridit-screen" class="screen" style="display: none;">
         <div class="container pocket-container">
-            <button id="pocket-back-btn" class="back-btn">&larr; Back</button>
-            <h2>Pocket Ridit 🐣</h2>
-            <p class="small-text pocket-intro">A tiny adventure starring your man. Type anything, he'll act it out.</p>
+            <div class="pocket-topbar">
+                <button id="pocket-back-btn" class="back-btn">&larr; Back</button>
+                <button id="pocket-restart-btn" class="pocket-restart-btn">New story 🔄</button>
+            </div>
             <div class="pocket-stage">
                 <canvas id="pocket-canvas" width="128" height="88" aria-label="Pixel Ridit"></canvas>
                 <div id="pocket-speech" class="pocket-speech" style="display: none;"></div>
@@ -279,7 +280,6 @@
                 <input type="text" id="pocket-input" placeholder="What do you do?" maxlength="120" enterkeyhint="send">
                 <button type="submit" id="pocket-send-btn">Go</button>
             </form>
-            <button id="pocket-restart-btn" class="btn-secondary pocket-restart-btn">New story 🔄</button>
         </div>
     </main>
 

@@ -439,10 +439,46 @@ var ADVENTURE_ANIMATIONS = {
   couch: 'banished to the couch, sitting there in shame',
   fainting: 'collapses dramatically, knocked out',
   sneaky: 'tiptoeing, hiding something, looking guilty',
-  phone: 'glued to his phone, not listening'
+  phone: 'glued to his phone, not listening',
+  showering: 'in the shower, singing',
+  toilet: 'on the toilet with his phone',
+  brushing: 'brushing teeth',
+  cooking: 'cooking, flipping a pan',
+  cleaning: 'sweeping, tidying',
+  working: 'on his laptop',
+  gaming: 'playing video games',
+  reading: 'reading a book',
+  singing: 'singing into a mic',
+  guitar: 'playing guitar',
+  exercising: 'lifting weights',
+  running: 'running, rushing',
+  waving: 'waving hello or bye',
+  kissing: 'blowing a kiss',
+  proposing: 'on one knee with a ring',
+  flowers: 'giving roses',
+  gift: 'giving a present',
+  crying: 'sobbing dramatically',
+  laughing: 'laughing hard',
+  blushing: 'shy, flustered',
+  thinking: 'thinking hard',
+  shocked: 'jaw-dropped, stunned',
+  sulking: 'arms crossed, pouting',
+  begging: 'on his knees pleading',
+  apologizing: 'bowing, saying sorry',
+  shrugging: 'shrugging, no idea',
+  facepalm: 'facepalming',
+  hiding: 'hiding in a cardboard box',
+  sick: 'ill with a thermometer',
+  sleepy: 'yawning, nodding off',
+  selfie: 'taking a selfie',
+  flexing: 'flexing his muscles',
+  shivering: 'freezing cold',
+  swimming: 'swimming in the sea'
 };
 
-var ADVENTURE_LOCATIONS = ['bedroom', 'kitchen', 'living_room', 'outside', 'cafe'];
+var ADVENTURE_LOCATIONS = ['bedroom', 'kitchen', 'living_room', 'outside', 'cafe',
+  'bathroom', 'shower', 'beach', 'gym', 'office', 'cinema', 'supermarket',
+  'rooftop', 'party', 'car'];
 
 // Common near-misses from the model, mapped onto real animations
 var ADVENTURE_ANIMATION_ALIASES = {
@@ -454,7 +490,17 @@ var ADVENTURE_ANIMATION_ALIASES = {
   loving: 'love', mad: 'angry', grumpy: 'angry', crying: 'sad', sulking: 'sad',
   nervous: 'scared', afraid: 'scared', shocked: 'scared', dance: 'dancing',
   celebrating: 'dancing', faint: 'fainting', fainted: 'fainting', ko: 'fainting',
-  hiding: 'sneaky', guilty: 'sneaky', on_phone: 'phone', texting: 'phone'
+  guilty: 'sneaky', on_phone: 'phone', texting: 'phone',
+  shower: 'showering', bathing: 'showering', bath: 'showering', pooping: 'toilet',
+  teeth: 'brushing', cook: 'cooking', sweeping: 'cleaning', typing: 'working',
+  studying: 'working', game: 'gaming', playing: 'gaming', book: 'reading',
+  sing: 'singing', workout: 'exercising', gym: 'exercising', run: 'running',
+  wave: 'waving', blowing_kiss: 'kissing', propose: 'proposing', roses: 'flowers',
+  present: 'gift', sobbing: 'crying', laugh: 'laughing', shy: 'blushing',
+  think: 'thinking', surprised: 'shocked', pouting: 'sulking', pleading: 'begging',
+  sorry: 'apologizing', shrug: 'shrugging', ill: 'sick', tired: 'sleepy',
+  yawning: 'sleepy', flex: 'flexing', cold: 'shivering', freezing: 'shivering',
+  swim: 'swimming'
 };
 
 // Each new story starts from one of these, so replays feel different
@@ -481,8 +527,8 @@ var ADVENTURE_TIME_BUDGET_MS = 30000; // stop trying more models after this
 
 function adventureSystemPrompt() {
   var animationLines = Object.keys(ADVENTURE_ANIMATIONS).map(function (name) {
-    return '  - ' + name + ': ' + ADVENTURE_ANIMATIONS[name];
-  }).join('\n');
+    return name + ' (' + ADVENTURE_ANIMATIONS[name] + ')';
+  }).join(', ');
 
   return [
     'You are the narrator of "Pocket Ridit", a cosy, funny text adventure in the style of Zork,',
@@ -512,11 +558,10 @@ function adventureSystemPrompt() {
     '- Gently steer towards little goals (get the Bournville, wake him up, get him off his',
     '  phone) and celebrate when she achieves one, then offer a new mischief.',
     '- speech: what pixel Ridit says out loud this turn, at most 8 words, or "" if nothing.',
-    '- animation: exactly one of the names below, matching what Ridit is doing at the END',
-    '  of this turn:',
-    animationLines,
+    '- animation: exactly one of these names, matching what Ridit is doing at the END of',
+    '  this turn. Vary them; pick the most specific one that fits: ' + animationLines + '.',
     '- location: where the scene is at the end of this turn, exactly one of: ' +
-      ADVENTURE_LOCATIONS.join(', ') + '.',
+      ADVENTURE_LOCATIONS.join(', ') + ' (car = the street by his car).',
     '- suggestions: exactly 3 short things she could type next (2 to 5 words, lowercase),',
     '  varied, at least one of them silly.',
     '',
