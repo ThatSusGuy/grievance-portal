@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Google Sheets Apps Script URL ---
     // Replace this with your deployed Apps Script web app URL
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxylONlZBEmsCjCuV-8bz8FeMBVZ1Jv0x3xVHylEUZLYek6dfvxbE7IwgTHhuRs-OXZ/exec';
+    window.APPS_SCRIPT_URL = APPS_SCRIPT_URL; // shared with pocket-ridit.js
 
     // --- Get references to all screens ---
     const loginScreen = document.getElementById('login-screen');

@@ -1,6 +1,9 @@
 # Portal Feature Ideas
 
-Brainstormed with Ridit on 8 Oct 2026. Nothing here is built yet.
+Brainstormed with Ridit on 8 Oct 2026.
+
+**Built:** Kaajal's Text Adventure + Pocket Ridit, combined into "Pocket Ridit 🐣"
+(`pocket-ridit.js`, Gemini via `apps-script.js`). Everything else is unbuilt.
 
 ## What Ridit wants (read this first)
 
