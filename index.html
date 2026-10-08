@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -63,12 +63,31 @@
             <h2>The Relationship Agreement 📜</h2>
             <p class="small-text">Thirty-two pages. Binding. Non-negotiable (okay, slightly negotiable) 💕</p>
 
+            <div class="notes-toolbar">
+                <span class="notes-hint">✍️ Tap a page to leave a note</span>
+                <span id="notes-sync" class="notes-sync" style="display: none;"></span>
+                <button id="notes-all-btn" class="notes-all-btn" type="button">💬 <span id="notes-count">0</span> <span id="notes-count-label">notes</span></button>
+            </div>
+
             <p id="agreement-loading" class="small-text" style="display: none;">Unrolling the covenant...</p>
             <p id="agreement-error" class="messages-error" style="display: none;"></p>
 
             <div id="pdf-pages" class="pdf-pages" style="display: none;"></div>
 
             <a id="agreement-download-btn" class="download-btn" href="relationship-agreement.pdf" download="The Relationship Agreement - Ridit &amp; Kaajal.pdf">Download PDF ⬇️</a>
+        </div>
+
+        <!-- Margin notes: thread view, composer and the all-notes list on phones -->
+        <div id="notes-sheet" class="notes-sheet" aria-hidden="true">
+            <div id="notes-backdrop" class="notes-backdrop"></div>
+            <div class="notes-panel" role="dialog" aria-labelledby="notes-sheet-title">
+                <div class="notes-grabber"></div>
+                <div class="notes-panel-head">
+                    <h3 id="notes-sheet-title">Notes</h3>
+                    <button id="notes-sheet-close" class="notes-close" type="button" aria-label="Close">&times;</button>
+                </div>
+                <div id="notes-sheet-body" class="notes-panel-body"></div>
+            </div>
         </div>
     </main>
 
@@ -295,5 +314,6 @@
 
     <script src="script.js"></script>
     <script src="pocket-ridit.js"></script>
+    <script src="agreement-notes.js"></script>
 </body>
 </html>
