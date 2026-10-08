@@ -1214,9 +1214,11 @@ document.addEventListener('DOMContentLoaded', () => {
         agreementIntroScreen.style.display = 'none';
         agreementScreen.style.display = 'flex';
         renderAgreementPdf();
+        if (window.agreementNotes) window.agreementNotes.open();
     });
 
     agreementBackBtn.addEventListener('click', () => {
+        if (window.agreementNotes) window.agreementNotes.close();
         agreementScreen.style.display = 'none';
         agreementIntroScreen.style.display = 'flex';
     });
@@ -1256,11 +1258,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 pdfPages.innerHTML = '';
                 pdfPages.style.display = 'flex';
 
-                // Fit pages to the viewer, rendered crisp for retina screens
-                const pageWidth = Math.max(pdfPages.clientWidth - 20, 280);
                 const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
                 for (let n = 1; n <= pdf.numPages; n++) {
+                    // Each page sits in a row with a margin beside it for notes
+                    const row = document.createElement('div');
+                    row.className = 'agreement-row';
+                    const pageEl = document.createElement('div');
+                    pageEl.className = 'agreement-page';
+                    row.appendChild(pageEl);
+                    pdfPages.appendChild(row);
+
+                    // Fit pages to the viewer, rendered crisp for retina screens
+                    const pageWidth = Math.max(pageEl.clientWidth, 280);
                     const page = await pdf.getPage(n);
                     const scale = pageWidth / page.getViewport({ scale: 1 }).width;
                     const viewport = page.getViewport({ scale: scale * dpr });
@@ -1268,12 +1278,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const canvas = document.createElement('canvas');
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
-                    pdfPages.appendChild(canvas);
+                    pageEl.appendChild(canvas);
 
                     await page.render({
                         canvasContext: canvas.getContext('2d'),
                         viewport: viewport
                     }).promise;
+
+                    if (window.agreementNotes) window.agreementNotes.attachPage(n, row);
 
                     // First page is up — she can start reading while the rest render
                     if (n === 1) agreementLoading.style.display = 'none';
