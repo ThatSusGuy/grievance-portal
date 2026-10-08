@@ -15,6 +15,8 @@
  * 3c. The "Grievances" and "GameLog" tabs (used by the stats page) are
  *    created automatically the first time something is logged — no
  *    manual setup needed.
+ * 3d. The "AgreementNotes" tab (margin notes on the Relationship
+ *    Agreement) is also created automatically the first time it's read.
  * 4. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
  * 5. Paste it below in SHEET_ID
  * 6. In the Google Sheet, go to Extensions > Apps Script
@@ -69,6 +71,8 @@ function doGet(e) {
     return logGame(e.parameter);
   } else if (action === 'getStats') {
     return getStats();
+  } else if (action === 'getAgreementNotes') {
+    return jsonOutput(getAgreementNotes());
   } else {
     return getSongs();
   }
@@ -402,6 +406,119 @@ function getMessages() {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
+// ── Relationship Agreement margin notes ────────────────────────────
+// Notes pinned to a spot on a page of the agreement PDF (x and y are
+// fractions of the page, 0–1), plus replies (rows with a parentId).
+// The portal makes up each note's id, so a retried add is harmless.
+
+var NOTES_HEADERS = ['id', 'parentId', 'page', 'x', 'y', 'author', 'text', 'timestamp'];
+var NOTE_MAX_LENGTH = 1000;
+
+function agreementNotesSheet() {
+  return ensureSheet(SpreadsheetApp.openById(SHEET_ID), 'AgreementNotes', NOTES_HEADERS);
+}
+
+// A leading apostrophe stores text as-is, so a note like "=)" or "10/3"
+// doesn't turn into a formula or a date (Sheets hides the apostrophe)
+function asSheetText(value) {
+  return "'" + String(value || '');
+}
+
+function toFraction(value) {
+  return Math.min(1, Math.max(0, Number(value) || 0));
+}
+
+function getAgreementNotes() {
+  var rows = agreementNotesSheet().getDataRange().getValues().slice(1);
+  var notes = rows.filter(function (r) { return r[0]; }).map(function (r) {
+    return {
+      id: String(r[0]),
+      parentId: String(r[1] || ''),
+      page: Number(r[2]) || 0,
+      x: Number(r[3]) || 0,
+      y: Number(r[4]) || 0,
+      author: String(r[5] || ''),
+      text: String(r[6] || ''),
+      timestamp: toIsoString(r[7])
+    };
+  });
+  return { status: 'success', notes: notes };
+}
+
+function addAgreementNote(body) {
+  var id = String(body.id || '');
+  var text = String(body.text || '').trim().slice(0, NOTE_MAX_LENGTH);
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(id) || !text) {
+    return { status: 'error', code: 'bad_request' };
+  }
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (err) {
+    return { status: 'error', code: 'busy' };
+  }
+  try {
+    var sheet = agreementNotesSheet();
+    var ids = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
+    var note = {
+      id: id,
+      parentId: String(body.parentId || '').slice(0, 40),
+      page: Math.max(0, Math.floor(Number(body.page) || 0)),
+      x: toFraction(body.x),
+      y: toFraction(body.y),
+      author: String(body.author || '').toLowerCase().slice(0, 30),
+      text: text,
+      timestamp: new Date().toISOString()
+    };
+    var exists = ids.some(function (r) { return String(r[0]) === id; });
+    if (!exists) {
+      sheet.appendRow([
+        note.id, asSheetText(note.parentId), note.page, note.x, note.y,
+        asSheetText(note.author), asSheetText(note.text), note.timestamp
+      ]);
+    }
+    return { status: 'success', note: note };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Deletes a note (and its replies). Only its author can delete it.
+function deleteAgreementNote(body) {
+  var id = String(body.id || '');
+  var author = String(body.author || '').toLowerCase();
+  if (!id) return { status: 'error', code: 'bad_request' };
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (err) {
+    return { status: 'error', code: 'busy' };
+  }
+  try {
+    var sheet = agreementNotesSheet();
+    var rows = sheet.getDataRange().getValues();
+    var target = null;
+    for (var i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === id) target = rows[i];
+    }
+    if (!target) return { status: 'success' }; // already gone
+    if (String(target[5] || '').toLowerCase() !== author) {
+      return { status: 'error', code: 'forbidden' };
+    }
+    // Bottom-up, so earlier row numbers stay valid
+    for (var j = rows.length - 1; j >= 1; j--) {
+      if (String(rows[j][0]) === id || String(rows[j][1]) === id) {
+        sheet.deleteRow(j + 1);
+      }
+    }
+    return { status: 'success' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ── Pocket Ridit (text adventure) ──────────────────────────────────
 // The portal POSTs the story so far; Gemini narrates the next beat and
 // picks one of the pixel animations below. The API key lives in Script
@@ -417,6 +534,12 @@ function doPost(e) {
 
   if (body.action === 'adventure') {
     return jsonOutput(adventureTurn(body));
+  }
+  if (body.action === 'addAgreementNote') {
+    return jsonOutput(addAgreementNote(body));
+  }
+  if (body.action === 'deleteAgreementNote') {
+    return jsonOutput(deleteAgreementNote(body));
   }
   return jsonOutput({ status: 'error', code: 'unknown_action' });
 }
