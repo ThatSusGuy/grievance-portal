@@ -1722,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function addThinking(text) {
         const line = addLine('pocket-narration pocket-thinking', text);
         const slow = setTimeout(() => {
-            line.textContent = 'Still thinking (the first story of the day can take a little while)';
+            line.textContent = 'Still thinking (the first move can take a few seconds)';
         }, 8000);
         return { remove: () => { clearTimeout(slow); line.remove(); } };
     }
@@ -1763,31 +1763,69 @@ document.addEventListener('DOMContentLoaded', () => {
         return history.slice(-HISTORY_SENT);
     }
 
+    // Opening scenes are written ahead of time, so a new story starts
+    // instantly instead of waiting on Gemini. Gemini takes over from her
+    // first move.
+    const OPENINGS = [
+        { narration: 'Morning light spills across the bedroom. You wake up absolutely starving, and Ridit is asleep beside you, snoring like a tiny tractor. Somewhere in the kitchen, a Bournville sits on the top shelf, just out of reach.',
+            speech: '', animation: 'sleeping', location: 'bedroom', suggestions: ['wake ridit', 'go to the kitchen', 'steal his blanket'] },
+        { narration: 'The living room, late evening. Ridit has been sentenced to the couch for a crime he claims not to remember. A tiny rain cloud hovers over his head. You hold the evidence.',
+            speech: 'I was framed, babylove', animation: 'couch', location: 'living_room', suggestions: ['read him the charges', 'pardon him', 'take the remote'] },
+        { narration: 'Ridit has announced that he is cooking dinner tonight. There is smoke. He insists the smoke is "part of the recipe" and flips something that may once have been an egg.',
+            speech: 'Trust the process', animation: 'cooking', location: 'kitchen', suggestions: ['taste it', 'open a window', 'order pizza instead'] },
+        { narration: 'Date night at the cafe. The bill arrives on a little tray. Ridit pats his pockets, then pats them again, with growing horror. His wallet is not in any of them.',
+            speech: 'I definitely had it', animation: 'shocked', location: 'cafe', suggestions: ['make him wash dishes', 'pay and gloat', 'check his jacket'] },
+        { narration: 'An evening walk. Ridit insists he knows exactly where the park is. He has turned left three times. You are now back where you started.',
+            speech: "It's a shortcut", animation: 'walking', location: 'outside', suggestions: ['ask for directions', 'hold his hand', 'race him home'] },
+        { narration: 'It is 2am and you are wide awake and in need of attention. Ridit is asleep, snoring loudly enough to rattle the window.',
+            speech: '', animation: 'sleeping', location: 'bedroom', suggestions: ['poke his cheek', 'whisper bournville', 'steal all the blanket'] },
+        { narration: 'From the bathroom comes a dramatic, slightly off-key ballad. Ridit is in the shower, performing for an audience of one rubber duck. He is also using your shampoo.',
+            speech: '🎵 And I will always love youuu', animation: 'showering', location: 'shower', suggestions: ['turn off the hot water', 'join the chorus', 'hide his towel'] },
+        { narration: 'Up on the rooftop, fairy lights twinkle over the city. Ridit has brought a guitar he cannot actually play, and he is about to serenade you anyway.',
+            speech: 'This one is for you', animation: 'guitar', location: 'rooftop', suggestions: ['request a love song', 'sing along', 'take the guitar'] },
+        { narration: 'At the supermarket you turn your back for one second. When you look again, Ridit is tiptoeing away from the trolley, which is now mostly Bournville.',
+            speech: 'Those were already there', animation: 'sneaky', location: 'supermarket', suggestions: ['check the trolley', 'interrogate him', 'add more chocolate'] },
+        { narration: 'At the gym, Ridit has done exactly one push-up. He is now flexing in the mirror and asking strangers if they can see his abs.',
+            speech: 'Feel this muscle, babylove', animation: 'flexing', location: 'gym', suggestions: ['poke his arm', 'make him do a set', 'take a photo'] },
+        { narration: 'You are at the movies and the film has just started. Ridit is scrolling on his phone, the screen lighting up his face like a lighthouse.',
+            speech: 'One sec, one sec...', animation: 'phone', location: 'cinema', suggestions: ['where my man at', 'steal his popcorn', 'take his phone'] },
+        { narration: 'A perfect beach day. Ridit is already in the sea, waving his arms and shouting that the water is "totally not cold". His lips are slightly blue.',
+            speech: 'Come in, it is warm!', animation: 'swimming', location: 'beach', suggestions: ['jump in', 'stay on the towel', 'bury his shoes'] },
+        { narration: 'The party is in full swing. Ridit has discovered the dance floor and is doing a move that looks like a confused octopus. People are filming.',
+            speech: 'THIS IS MY SONG', animation: 'dancing', location: 'party', suggestions: ['dance with him', 'drag him home', 'request a slow song'] },
+        { narration: 'Ridit is at his desk, typing furiously. He promised it would be "five more minutes" an hour ago. You have been counting.',
+            speech: 'Almost done, I swear', animation: 'working', location: 'office', suggestions: ['close his laptop', 'sit on his desk', 'bring him a bournville'] },
+        { narration: 'You are standing by the car, ready to leave. Ridit has searched every pocket three times. The car keys are, as always, nowhere.',
+            speech: 'They were RIGHT here', animation: 'confused', location: 'car', suggestions: ['check his hand', 'help him look', 'call a taxi'] }
+    ];
+
+    function pickOpening() {
+        let last = -1;
+        try { last = Number(localStorage.getItem('pocketRiditLastOpening')); } catch (err) { /* fine */ }
+        let index = Math.floor(Math.random() * OPENINGS.length);
+        if (index === last) index = (index + 1) % OPENINGS.length;
+        try { localStorage.setItem('pocketRiditLastOpening', String(index)); } catch (err) { /* fine */ }
+        return JSON.parse(JSON.stringify(OPENINGS[index]));
+    }
+
     function startStory() {
         if (busy) return;
-        setBusy(true);
         logEl.innerHTML = '';
-        renderSuggestions([]);
         say('');
-        setAnimation('sleeping', 'bedroom');
-        const thinking = addThinking('Once upon a time');
+        const opening = pickOpening();
+        story = { opening: opening, turns: [] };
+        saveStory();
+        addLine('pocket-narration', opening.narration);
+        applyReply(opening);
+    }
 
-        callAdventure({ start: true })
-            .then(result => {
-                thinking.remove();
-                if (result.status !== 'success') throw result;
-                story = { opening: result.reply, turns: [] };
-                saveStory();
-                addLine('pocket-narration', result.reply.narration);
-                applyReply(result.reply);
-            })
-            .catch(err => {
-                thinking.remove();
-                showError(err);
-                // with no opening yet, any turn restarts the story
-                renderSuggestions(['start again']);
-            })
-            .finally(() => setBusy(false));
+    // Apps Script sleeps when unused and takes a few seconds to wake up.
+    // Nudge it as soon as she opens Pocket Ridit, so her first move is quick.
+    let warmedUp = false;
+    function warmUp() {
+        if (warmedUp) return;
+        warmedUp = true;
+        callAdventure({ action: 'warmup' }).catch(() => { /* just a nudge */ });
     }
 
     function takeTurn(text) {
@@ -1851,6 +1889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'none';
         screen.style.display = 'flex';
         startLoop();
+        warmUp();
         if (story.opening) {
             renderStory();
         } else {
