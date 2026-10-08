@@ -41,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let queue = loadQueue();
     let backendReady = null; // false once we know the backend predates notes
     let flushing = false;
+    let sendFailed = false;    // the last send couldn't get through
+    let retryTimer = null;
+    let retryDelay = 4000;
     let pollTimer = null;
     let isOpen = false;
 
@@ -185,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (result.status === 'success') {
                     backendReady = true;
+                    sendFailed = false;
+                    retryDelay = 4000;
                     if (op.type === 'add') {
                         const saved = result.note || op.note;
                         serverNotes = serverNotes.filter(n => n.id !== saved.id).concat([saved]);
@@ -195,6 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else if (['unreachable', 'old_backend', 'unknown_action', 'busy'].includes(result.code)) {
                     if (result.code === 'old_backend' || result.code === 'unknown_action') backendReady = false;
+                    sendFailed = true;
+                    scheduleRetry();
                     break; // try again later
                 }
                 // Anything else was rejected for good (e.g. the note is already gone)
@@ -206,6 +213,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // A hiccup shouldn't leave a note waiting for the next poll: retry
+    // soon, backing off up to 30s
+    function scheduleRetry() {
+        if (!isOpen || retryTimer || backendReady === false) return;
+        retryTimer = setTimeout(() => {
+            retryTimer = null;
+            flushQueue().then(afterSync);
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30000);
+    }
+
     async function refresh() {
         await flushQueue();
         await fetchNotes();
@@ -213,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Re-render after a sync, unless that would yank away a half-typed
-    // reply; then just update the "sending…" labels in place
+    // reply; then just update the "not sent yet" labels in place
     function afterSync() {
         if (!isTyping()) {
             render();
@@ -226,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (stillQueued.has(id)) return;
             node.classList.remove('pending');
             const meta = node.querySelector('.note-meta');
-            if (meta) meta.textContent = meta.textContent.replace(/(sending…|saved on this device)$/, 'just now');
+            if (meta) meta.textContent = meta.textContent.replace(/(not sent yet · retrying|saved on this device)$/, 'just now');
         });
     }
 
@@ -378,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pin.style.left = (thread.x * 100) + '%';
         pin.style.top = (thread.y * 100) + '%';
         if (thread.id === activeId) pin.classList.add('active');
-        if (thread.pending) pin.classList.add('pending');
+        if (thread.pending && sendFailed) pin.classList.add('pending');
         pin.setAttribute('aria-label', 'Note from ' + who.name + ': ' + thread.text);
         pin.appendChild(el('span', 'note-pin-face', who.name.charAt(0)));
         if (thread.replies.length) {
@@ -408,15 +426,17 @@ document.addEventListener('DOMContentLoaded', () => {
         head.appendChild(avatar(note.author));
         const meta = el('div', 'note-who');
         meta.appendChild(el('span', 'note-name', who.name));
+        // Notes show as sent straight away; only a failed send gets a label
+        const stuck = note.pending && sendFailed;
         let when = timeAgo(note.timestamp);
-        if (note.pending) when = backendReady === false ? 'saved on this device' : 'sending…';
+        if (stuck) when = backendReady === false ? 'saved on this device' : 'not sent yet · retrying';
         meta.appendChild(el('span', 'note-meta', (isRoot ? who.role + ' · ' : '') + when));
         head.appendChild(meta);
         if (note.author === currentUser()) head.appendChild(buildDeleteButton(note));
 
         wrap.appendChild(head);
         wrap.appendChild(el('p', 'note-text', note.text));
-        if (note.pending) wrap.classList.add('pending');
+        if (stuck) wrap.classList.add('pending');
         return wrap;
     }
 
@@ -592,8 +612,8 @@ document.addEventListener('DOMContentLoaded', () => {
         countLabelEl.textContent = list.length === 1 ? 'note' : 'notes';
 
         let status = '';
-        if (queue.length) {
-            status = backendReady === false ? '💾 Saved on this device' : '⏳ Syncing…';
+        if (queue.length && sendFailed) {
+            status = backendReady === false ? '💾 Saved on this device' : '⏳ Retrying…';
         }
         syncEl.textContent = status;
         syncEl.style.display = status ? 'inline-flex' : 'none';
@@ -769,6 +789,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function close() {
         isOpen = false;
         clearInterval(pollTimer);
+        clearTimeout(retryTimer);
+        retryTimer = null;
         closeSheet();
         draft = null;
         activeId = null;
