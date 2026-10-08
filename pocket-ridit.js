@@ -871,6 +871,8 @@ document.addEventListener('DOMContentLoaded', () => {
         needs_permission: "Pocket Ridit isn't allowed online yet. Ridit needs to run testPocketRidit once in Apps Script 🔧",
         old_backend: "Pocket Ridit's backend isn't updated yet. Ridit needs to deploy the new Apps Script version 🔧",
         unreachable: "Couldn't reach the portal's backend. Check your internet and try again 📶",
+        timeout: 'Gemini took too long to answer 🐢 Try again in a moment.',
+        slow: 'Gemini is being really slow right now 🐢 Try again in a moment.',
         empty_input: 'Type something for Ridit to do first 😗'
     };
     const FALLBACK_ERROR = 'The narrator got distracted by a Bournville. Try again 🍫';
@@ -967,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = window.APPS_SCRIPT_URL;
         if (!url) return Promise.reject(new Error('no url'));
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 45000);
+        const timeout = setTimeout(() => controller.abort(), 90000);
         // text/plain keeps this a "simple" request, so no CORS preflight
         return fetch(url, {
             method: 'POST',
@@ -984,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const code = /doPost/.test(text) ? 'old_backend' : 'unreachable';
                     return { status: 'error', code: code, detail: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) };
                 }
-            }, () => ({ status: 'error', code: 'unreachable' }))
+            }, () => ({ status: 'error', code: controller.signal.aborted ? 'timeout' : 'unreachable' }))
             .finally(() => clearTimeout(timeout));
     }
 

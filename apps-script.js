@@ -469,13 +469,15 @@ var ADVENTURE_OPENINGS = [
 
 var ADVENTURE_MAX_TURNS = 10;      // history sent to the model
 var ADVENTURE_RATE_LIMIT = 60;     // turns per 10 minutes, protects the free quota
+// Flash-Lite first: it's the fastest and has the biggest free daily quota
 var ADVENTURE_DEFAULT_MODELS = [
+  'gemini-flash-lite-latest',
   'gemini-flash-latest',
   'gemini-3.8-flash',
   'gemini-3.5-flash',
-  'gemini-flash-lite-latest',
   'gemini-2.5-flash'
 ];
+var ADVENTURE_TIME_BUDGET_MS = 30000; // stop trying more models after this
 
 function adventureSystemPrompt() {
   var animationLines = Object.keys(ADVENTURE_ANIMATIONS).map(function (name) {
@@ -607,7 +609,13 @@ function callGemini(apiKey, request, props, cache) {
 
   var lastCode = 'ai_unavailable';
   var attempts = [];
+  var started = Date.now();
   for (var i = 0; i < models.length; i++) {
+    if (i > 0 && Date.now() - started > ADVENTURE_TIME_BUDGET_MS) {
+      lastCode = 'slow';
+      break;
+    }
+    var attemptStart = Date.now();
     var noThinkKey = 'adventure_nothink_' + models[i];
     var skipThinking = cache.get(noThinkKey) === '1';
     var response = fetchGemini(apiKey, models[i], skipThinking ? plain : request);
@@ -618,9 +626,11 @@ function callGemini(apiKey, request, props, cache) {
       if (response.status === 200) cache.put(noThinkKey, '1', 21600);
     }
 
-    attempts.push(models[i] + ': ' + describeGeminiResponse(response));
+    attempts.push(models[i] + ': ' + describeGeminiResponse(response) +
+      ' (' + ((Date.now() - attemptStart) / 1000).toFixed(1) + 's)');
 
     if (response.status === 200) {
+      console.log('Pocket Ridit: ' + attempts.join(' | '));
       var text = geminiText(response.json);
       if (text === null) return { ok: false, code: 'blocked', detail: attempts.join(' | ') };
       cache.put('adventure_model', models[i], 21600);
@@ -640,6 +650,7 @@ function callGemini(apiKey, request, props, cache) {
     }
     lastCode = response.status === 429 ? 'quota' : 'ai_unavailable';
   }
+  console.log('Pocket Ridit failed: ' + attempts.join(' | '));
   return { ok: false, code: lastCode, detail: attempts.join(' | ').slice(0, 600) };
 }
 
