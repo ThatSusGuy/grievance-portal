@@ -33,37 +33,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // the scene (rotated 90° when lying down, which keeps pixels crisp)
     const sprite = document.createElement('canvas');
     sprite.width = 40;
-    sprite.height = 44;
+    sprite.height = 50;
     const sctx = sprite.getContext('2d');
-    const SOX = 20, SOY = 42; // sprite origin: between his feet
+    const SOX = 20, SOY = 48; // sprite origin: between his feet
 
-    // Ridit's head, traced from his photo: big swept hair with a fringe,
-    // thick brows, ears, light stubble. Column 0 is x = -7; row 0 is T - 4.
-    // H hair, h hair highlight, S skin, s nose shade, E ear, B stubble
+    // Ridit's head, traced from his photos: messy near-black hair with a
+    // fringe swept across his forehead, very thick brows, ears tucked under
+    // the hair, a broad nose, and a patchy moustache and chin stubble.
+    // Column c is x = c - 9; row r is HEAD_TOP + r. Eyes, brows and mouth
+    // are drawn on top so they can change with his mood.
+    // H hair, h hair highlight, S skin, n nose shade, E ear, B stubble
     const HEAD = [
-        '...hHHHHh.....',
-        '.HHHHhHHHHHH..',
-        'HHHHHHHhHHHHH.',
-        'HHHhHHHHHHhHHH',
-        'HHHHHHHHHHHHHH',
-        '.HHHHHHHHSSSH.',
-        '.HHHHHSSSSSSH.',
-        '.HHHSSSSSSSSH.',
-        '.HSSSSSSSSSSH.',
-        '.ESSSSSSSSSSE.',
-        '.ESSSSSSSSSSE.',
-        '.ESSSSsSSSSSE.',
-        '..SSSBBBBSSS..',
-        '..BSSSSSSSSB..',
-        '...BBBBBBBB...',
-        '....BBBBBB....'
+        '......HH.H........',
+        '....HHHHHHHHH.....',
+        '..HHHHHHHHHHHHH...',
+        '.HHHHhHHHHHHHHHH..',
+        '.HHHHHHHHHHHhHHHH.',
+        'HHHHHHHHHHHHHHHHHH',
+        'HHHHHHHHHHHHSSHHHH',
+        '.HHHHHHHHHSSSSSHHH',
+        '.HHHHHHHSSSSSSSSHH',
+        '.HHHSSSSSSSSSSSSHH',
+        '.HHSSSSSSSSSSSSSHH',
+        '.ESSSSSSSSSSSSSSE.',
+        '.ESSSSSSSSSSSSSSE.',
+        '.ESSSSSSSSSSSSSSE.',
+        '.ESSSSSSnnSSSSSSE.',
+        '..SSSSSnSSnSSSSS..',
+        '..BSSSBBBBBBSSSB..',
+        '..BSSSSSSSSSSSSB..',
+        '...BSSSSSSSSSSB...',
+        '....BBBBBBBBBB....',
+        '.....BBBBBBBB.....'
     ];
+    const HEAD_TOP = -40; // relative to his feet; the chin sits on the collar
 
     const C = {
-        skin: '#cf9670', skinShade: '#b07a56', hair: '#241913', hairLight: '#4a3326',
-        stubble: '#b47e5c', hoodie: '#2d3446', hoodieShade: '#222838', collar: '#414a60',
-        pants: '#3d4f73',
-        shoe: '#f4f4f4', eye: '#1a1a1a', mouth: '#5a2323', white: '#ffffff',
+        skin: '#c28763', skinShade: '#a46c4c', hair: '#151112', hairLight: '#2e2523',
+        stubble: '#94664c', lip: '#b06a72', lipDark: '#7a3f45',
+        hoodie: '#1e1e22', hoodieShade: '#141417', collar: '#2c2c32',
+        pants: '#cbbda4', pantsShade: '#b3a68e',
+        shoe: '#f4f4f4', eye: '#1a1210', white: '#f4ece4',
         blush: '#ef7f9c', heart: '#e8344e', angry: '#d9483b',
         wrapper: '#4b1f5c', gold: '#d4a63a', choc: '#5a3420'
     };
@@ -103,17 +113,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hand positions relative to his feet (before the upper-body offset)
     const HANDS = {
         down: [[-8, -11], [6, -11]],
-        up: [[-9, -29], [7, -29]],
+        up: [[-12, -36], [10, -36]],
         out: [[-12, -17], [10, -17]],
         chest: [[-3, -14], [1, -14]],
         hips: [[-10, -14], [8, -14]],
         phone: [[-3, -15], [1, -15]],
-        gesture: [[-8, -11], [9, -21]],
-        scratch: [[-6, -31], [6, -11]],
-        eat: [[-8, -11], [2, -19]],
+        gesture: [[-8, -11], [10, -22]],
+        scratch: [[-10, -37], [6, -11]],
+        eat: [[-8, -11], [3, -21]],
         sneak: [[-3, -14], [1, -15]],
-        danceA: [[-9, -29], [6, -11]],
-        danceB: [[-8, -11], [7, -29]],
+        danceA: [[-12, -36], [6, -11]],
+        danceB: [[-8, -11], [10, -36]],
         swingA: [[-9, -12], [5, -11]],
         swingB: [[-7, -11], [7, -12]]
     };
@@ -132,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const up = pose.bob + (pose.legs === 'sit' ? 4 : 0);
         const p = (x, y, w, h, color) => rect(s, SOX + x, SOY + y, w, h, color);
 
-        // Legs and shoes
+        // Legs (beige trousers) and white shoes
         const legs = pose.legs;
         if (legs === 'sit') {
             p(-5, -4, 4, 3, C.pants); p(1, -4, 4, 3, C.pants);
@@ -142,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const liftR = legs === 'walkB' ? 1 : 0;
             p(-5, -8, 4, 7 - liftL, C.pants);
             p(1, -8, 4, 7 - liftR, C.pants);
+            p(-2, -8, 1, 7 - liftL, C.pantsShade); p(4, -8, 1, 7 - liftR, C.pantsShade);
             if (legs === 'tiptoe') {
                 p(-4, -1 - liftL, 3, 1, C.shoe); p(2, -1 - liftR, 3, 1, C.shoe);
             } else {
@@ -149,104 +160,114 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Dark crewneck sweatshirt
+        // Black tee
         const B = -19 + up;
         p(-6, B, 12, 11, C.hoodie);
-        p(-6, B + 9, 12, 2, C.hoodieShade);
-        p(-4, B, 8, 1, C.collar);
-        p(-2, B, 4, 1, C.skinShade);
+        p(-6, B + 10, 12, 1, C.hoodieShade);
+        p(-3, B, 6, 1, C.collar);
 
-        // Head
-        const T = -31 + up;
-        const HEAD_COLORS = { H: C.hair, h: C.hairLight, S: C.skin, s: C.skinShade, E: C.skinShade, B: C.stubble };
-        HEAD.forEach((row, r) => {
-            for (let col = 0; col < row.length; col++) {
-                if (row[col] !== '.') p(col - 7, T - 4 + r, 1, 1, HEAD_COLORS[row[col]]);
-            }
-        });
-
-        if (pose.tint > 0) {
-            s.globalAlpha = Math.min(1, pose.tint);
-            p(-5, T + 2, 10, 8, C.angry);
-            s.globalAlpha = 1;
-        }
-
-        const E = T + 5, M = T + 9, lx = -3, rx = 2, look = pose.look;
-
-        // Thick brows, which also carry most of his expressions
-        if (pose.brows === 'angry') {
-            p(-4, E - 2, 2, 1, C.hair); p(-2, E - 1, 1, 1, C.hair);
-            p(1, E - 1, 1, 1, C.hair); p(2, E - 2, 2, 1, C.hair);
-        } else if (pose.brows === 'sad') {
-            p(-4, E - 1, 1, 1, C.hair); p(-3, E - 2, 2, 1, C.hair);
-            p(1, E - 2, 2, 1, C.hair); p(3, E - 1, 1, 1, C.hair);
-        } else {
-            p(-4, E - 2, 3, 1, C.hair); p(1, E - 2, 3, 1, C.hair);
-        }
-
-        switch (pose.eyes) {
-            case 'closed':
-                p(lx - 1, E + 1, 2, 1, C.eye); p(rx, E + 1, 2, 1, C.eye); break;
-            case 'half':
-                p(lx - 1, E, 2, 1, C.skinShade); p(rx, E, 2, 1, C.skinShade);
-                p(lx, E + 1, 1, 1, C.eye); p(rx, E + 1, 1, 1, C.eye); break;
-            case 'happy':
-                [lx, rx].forEach(x => {
-                    p(x - 1, E + 1, 1, 1, C.eye); p(x, E, 1, 1, C.eye); p(x + 1, E + 1, 1, 1, C.eye);
-                });
-                break;
-            case 'heart':
-                glyph(s, 'tinyHeart', SOX + lx - 1, SOY + E - 1, C.heart);
-                glyph(s, 'tinyHeart', SOX + rx - 1, SOY + E - 1, C.heart); break;
-            case 'x':
-                glyph(s, 'x', SOX + lx - 1, SOY + E - 1, C.eye);
-                glyph(s, 'x', SOX + rx - 1, SOY + E - 1, C.eye); break;
-            case 'wide':
-                p(lx - 1, E, 3, 2, C.white); p(rx - 1, E, 3, 2, C.white);
-                p(lx, E, 1, 1, C.eye); p(rx, E, 1, 1, C.eye); break;
-            case 'down':
-                p(lx, E + 1, 1, 1, C.eye); p(rx, E + 1, 1, 1, C.eye); break;
-            case 'squint':
-                p(lx - 1, E + 1, 2, 1, C.eye); p(rx, E, 1, 2, C.eye); break;
-            default:
-                p(lx + look, E, 1, 2, C.eye); p(rx + look, E, 1, 2, C.eye);
-        }
-
-        if (pose.blush) {
-            p(-5, E + 2, 2, 1, C.blush); p(3, E + 2, 2, 1, C.blush);
-        }
-
-        switch (pose.mouth) {
-            case 'big':
-                p(-3, M - 1, 6, 1, C.mouth); p(-2, M - 1, 4, 1, C.white); p(-2, M, 4, 1, C.mouth); break;
-            case 'flat':
-                p(-1, M, 2, 1, C.mouth); break;
-            case 'frown':
-                p(-2, M, 1, 1, C.mouth); p(-1, M - 1, 2, 1, C.mouth); p(1, M, 1, 1, C.mouth); break;
-            case 'o':
-                p(-1, M - 1, 2, 2, C.mouth); break;
-            case 'open':
-                p(-2, M - 1, 4, 2, C.mouth); break;
-            case 'chew':
-                p(-2, M, 4, 1, C.mouth); break;
-            case 'wavy':
-                p(-2, M, 1, 1, C.mouth); p(-1, M - 1, 1, 1, C.mouth);
-                p(0, M, 1, 1, C.mouth); p(1, M - 1, 1, 1, C.mouth); break;
-            default:
-                // his wide grin
-                p(-3, M - 1, 1, 1, C.mouth); p(-2, M, 4, 1, C.mouth); p(2, M - 1, 1, 1, C.mouth);
-        }
-
-        // Arms: a 2px hoodie line from shoulder to hand, then the hand
+        // Arms: a short black sleeve, then bare arm down to the hand
         const hands = HANDS[pose.arms] || HANDS.down;
         [[-7, hands[0]], [6, hands[1]]].forEach(([sx, hand]) => {
             const sy = B + 1, hx = hand[0], hy = hand[1] + up;
             const steps = Math.max(Math.abs(hx - sx), Math.abs(hy - sy), 1);
             for (let i = 0; i < steps; i++) {
-                p(sx + Math.round((hx - sx) * i / steps), sy + Math.round((hy - sy) * i / steps), 2, 2, C.hoodie);
+                const color = i < Math.max(2, steps * 0.35) ? C.hoodie : C.skin;
+                p(sx + Math.round((hx - sx) * i / steps), sy + Math.round((hy - sy) * i / steps), 2, 2, color);
             }
             p(hx, hy, 2, 2, C.skin);
         });
+
+        // Head
+        const T = HEAD_TOP + up;
+        const f = (col, row, w, h, color) => p(col - 9, T + row, w, h, color);
+        const HEAD_COLORS = { H: C.hair, h: C.hairLight, S: C.skin, n: C.skinShade, E: C.skinShade, B: C.stubble };
+        HEAD.forEach((row, r) => {
+            for (let col = 0; col < row.length; col++) {
+                if (row[col] !== '.') f(col, r, 1, 1, HEAD_COLORS[row[col]]);
+            }
+        });
+
+        if (pose.tint > 0) {
+            s.globalAlpha = Math.min(1, pose.tint);
+            f(2, 8, 14, 11, C.angry);
+            s.globalAlpha = 1;
+        }
+
+        // Very thick brows, which carry most of his expressions
+        switch (pose.brows) {
+            case 'angry':
+                f(3, 9, 2, 1, C.hair); f(5, 10, 2, 1, C.hair); f(7, 11, 1, 1, C.hair);
+                f(13, 9, 2, 1, C.hair); f(11, 10, 2, 1, C.hair); f(10, 11, 1, 1, C.hair); break;
+            case 'sad':
+                f(3, 10, 2, 1, C.hair); f(5, 9, 3, 1, C.hair);
+                f(10, 9, 3, 1, C.hair); f(13, 10, 2, 1, C.hair); break;
+            case 'up':
+                f(3, 8, 5, 2, C.hair); f(10, 8, 5, 2, C.hair); break;
+            default:
+                f(4, 9, 3, 1, C.hair); f(3, 10, 5, 1, C.hair);
+                f(11, 9, 3, 1, C.hair); f(10, 10, 5, 1, C.hair);
+        }
+
+        // Eyes: left eye is columns 4-6, right eye 11-13
+        const look = pose.look;
+        [4, 11].forEach(ex => {
+            switch (pose.eyes) {
+                case 'closed':
+                    f(ex, 13, 3, 1, C.eye); break;
+                case 'half':
+                    f(ex, 12, 3, 1, C.skinShade); f(ex, 13, 3, 1, C.eye); break;
+                case 'happy':
+                    f(ex, 13, 1, 1, C.eye); f(ex + 1, 12, 1, 1, C.eye); f(ex + 2, 13, 1, 1, C.eye); break;
+                case 'heart':
+                    glyph(s, 'tinyHeart', SOX + ex - 9, SOY + T + 11, C.heart); break;
+                case 'x':
+                    glyph(s, 'x', SOX + ex - 9, SOY + T + 11, C.eye); break;
+                case 'wide':
+                    f(ex, 11, 3, 1, C.eye); f(ex, 12, 3, 2, C.white); f(ex + 1, 12, 1, 2, C.eye); break;
+                case 'down':
+                    f(ex, 12, 3, 1, C.eye); f(ex + 1, 13, 1, 1, C.eye); break;
+                case 'squint':
+                    if (ex === 4) { f(ex, 13, 3, 1, C.eye); break; }
+                    f(ex, 12, 3, 1, C.eye); f(ex, 13, 3, 1, C.white); f(ex + 1, 13, 1, 1, C.eye); break;
+                default:
+                    // heavy upper lid, white, dark iris
+                    f(ex, 12, 3, 1, C.eye);
+                    f(ex, 13, 3, 1, C.white);
+                    f(ex + 1 + look, 13, 1, 1, C.eye);
+            }
+        });
+
+        if (pose.blush) {
+            f(3, 14, 2, 1, C.blush); f(13, 14, 2, 1, C.blush);
+        }
+
+        // Full lips: the mouth spans columns 6-11, rows 16-18
+        switch (pose.mouth) {
+            case 'big':
+                f(6, 17, 6, 1, C.lipDark); f(7, 17, 4, 1, C.white); f(7, 18, 4, 1, C.lipDark); break;
+            case 'flat':
+                f(7, 17, 4, 1, C.lipDark); f(8, 18, 2, 1, C.lip); break;
+            case 'frown':
+                f(7, 17, 4, 1, C.lipDark); f(6, 18, 1, 1, C.lipDark); f(11, 18, 1, 1, C.lipDark);
+                f(7, 18, 4, 1, C.lip); break;
+            case 'o':
+                f(7, 17, 4, 2, C.lip); f(8, 17, 2, 2, C.lipDark); break;
+            case 'open':
+                f(7, 17, 4, 2, C.lipDark); f(7, 18, 4, 1, C.lip); break;
+            case 'chew':
+                f(7, 17, 4, 1, C.lip); f(7, 18, 4, 1, C.lipDark); break;
+            case 'wavy':
+                f(7, 17, 1, 1, C.lipDark); f(8, 18, 1, 1, C.lipDark);
+                f(9, 17, 1, 1, C.lipDark); f(10, 18, 1, 1, C.lipDark); break;
+            case 'pout':
+                // the kissy face
+                f(7, 16, 4, 3, C.lip); f(8, 17, 2, 1, C.lipDark); break;
+            default:
+                // his easy smile with a full lower lip
+                f(6, 16, 1, 1, C.lipDark); f(11, 16, 1, 1, C.lipDark);
+                f(7, 17, 4, 1, C.lipDark); f(7, 18, 4, 1, C.lip);
+        }
 
         // Things he's holding
         if (pose.item === 'bournville') {
@@ -256,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p(hx, hy - 2, 3, 1, C.gold);
             if (choc > 0) p(hx, hy - 3 - choc, 3, choc, C.choc);
         } else if (pose.item === 'phone') {
-            p(-2, -19 + up, 4, 5, '#222');
+            p(-2, -19 + up, 4, 5, '#333');
             p(-1, -18 + up, 2, 3, pose.screenOn ? '#8fe3ff' : '#4d7f99');
             p(-3, -15 + up, 2, 2, C.skin); p(1, -15 + up, 2, 2, C.skin);
         }
@@ -464,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.globalAlpha = 1;
                 break;
             case 'anger':
-                if (Math.floor(t * 4) % 2 === 0) glyph(ctx, 'anger', hx + 6, hy - 1, C.angry);
+                if (Math.floor(t * 4) % 2 === 0) glyph(ctx, 'anger', hx + 7, hy - 1, C.angry);
                 for (let i = 0; i < 2; i++) {
                     const ph = (t * 0.9 + i / 2) % 1;
                     ctx.globalAlpha = 1 - ph;
@@ -473,12 +494,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.globalAlpha = 1;
                 break;
             case 'sweat':
-                if (Math.floor(t * 2) % 3 !== 2) glyph(ctx, 'drop', hx + 7, hy + 7 + Math.floor(t * 4) % 3, '#6cc4ff');
+                if (Math.floor(t * 2) % 3 !== 2) glyph(ctx, 'drop', hx + 9, hy + 8 + Math.floor(t * 4) % 3, '#6cc4ff');
                 break;
             case 'tears': {
                 const ph = (t * 1.2) % 1;
-                glyph(ctx, 'drop', hx - 5, hy + 9 + ph * 8, '#6cc4ff');
-                glyph(ctx, 'drop', hx + 3, hy + 9 + ((ph + 0.5) % 1) * 8, '#6cc4ff');
+                glyph(ctx, 'drop', hx - 6, hy + 14 + ph * 8, '#6cc4ff');
+                glyph(ctx, 'drop', hx + 3, hy + 14 + ((ph + 0.5) % 1) * 8, '#6cc4ff');
                 break;
             }
             case 'question':
@@ -490,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'stars':
                 for (let i = 0; i < 3; i++) {
                     const a = t * 4 + i * 2.1;
-                    glyph(ctx, 'star', hx + Math.cos(a) * 8 - 1, hy - 3 + Math.sin(a) * 3, '#ffd84a');
+                    glyph(ctx, 'star', hx + Math.cos(a) * 11 - 1, hy - 3 + Math.sin(a) * 3, '#ffd84a');
                 }
                 break;
             case 'cloud': {
@@ -513,12 +534,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'crumbs': {
                 const ph = (t * 1.5) % 1;
-                rect(ctx, hx + 2, hy + 14 + ph * 16, 1, 1, C.choc);
-                rect(ctx, hx - 1, hy + 14 + ((ph + 0.4) % 1) * 16, 1, 1, C.choc);
+                rect(ctx, hx + 2, hy + 19 + ph * 14, 1, 1, C.choc);
+                rect(ctx, hx - 1, hy + 19 + ((ph + 0.4) % 1) * 14, 1, 1, C.choc);
                 break;
             }
             case 'notify':
-                if (t % 2.4 < 1.2) glyph(ctx, 'bubble', hx + 7, hy - 3, '#ffffff');
+                if (t % 2.4 < 1.2) glyph(ctx, 'bubble', hx + 9, hy - 3, '#ffffff');
                 break;
         }
     }
@@ -534,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function lyingSpot(location) {
         if (location === 'bedroom') return { x: 52, y: 58, onBed: true };
         if (location === 'living_room') return { x: 72, y: 61 };
-        return { x: HOME_X[location] + 14, y: GROUND - 8 };
+        return { x: HOME_X[location] + 18, y: GROUND - 10 };
     }
 
     const ANIMS = {
@@ -614,6 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
         love(t, loc) {
             const pose = defaultPose();
             pose.eyes = 'heart';
+            pose.mouth = Math.floor(t * 1.5) % 2 ? 'pout' : 'smile';
             pose.blush = true;
             pose.arms = 'out';
             pose.bob = Math.floor(t * 2) % 2;
@@ -639,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scared(t, loc) {
             const pose = defaultPose();
             pose.eyes = 'wide';
+            pose.brows = 'up';
             pose.mouth = 'o';
             pose.arms = 'up';
             const jitter = Math.floor(t * 14) % 2 ? 1 : -1;
@@ -678,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (t < 0.6) {
                 return { pose, x: HOME_X[loc] + (Math.floor(t * 14) % 2 ? 1 : -1), fx: ['stars'] };
             }
-            return { pose, lying: { x: HOME_X[loc] + 14, y: GROUND - 8 }, fx: ['stars'] };
+            return { pose, lying: { x: HOME_X[loc] + 18, y: GROUND - 10 }, fx: ['stars'] };
         },
         sneaky(t, loc) {
             const pose = defaultPose();
@@ -755,8 +778,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(sprite, -SOX, -SOY);
             ctx.restore();
             if (frame.lying.onBed) ROOMS.bedroomFront();
-            hx = x - 27;
-            hy = y - 9;
+            hx = x - 30;
+            hy = y - 11;
         } else {
             const gy = (frame.groundY || GROUND) + (frame.jump || 0);
             const up = frame.pose.bob + (frame.pose.legs === 'sit' ? 4 : 0);
@@ -770,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.drawImage(sprite, frame.x - SOX, gy - SOY);
             }
             hx = frame.x;
-            hy = gy - 35 + up;
+            hy = gy - 40 + up;
         }
 
         (frame.fx || []).forEach(name => drawEffect(name, now / 1000, hx, hy));
