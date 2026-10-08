@@ -96,5 +96,5 @@ the Music Wall, angy / baby me moods.
 - The site is static on GitHub Pages and the backend is Google Apps Script
   (`apps-script.js`). Anything using the Claude API must keep the API key in
   Apps Script Script Properties, never in `script.js`.
-- The whole repo root is deployed to the live site, including this file once
-  it's on `main`.
+- The whole repo root is deployed to the live site, except `.claude/` (the
+  deploy workflow deletes it before upload), so this file stays private.
