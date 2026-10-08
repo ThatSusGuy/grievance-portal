@@ -945,9 +945,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setBusy(value) {
         busy = value;
-        input.disabled = value;
         sendBtn.disabled = value;
         suggestionsEl.querySelectorAll('button').forEach(b => { b.disabled = value; });
+    }
+
+    function addThinking(text) {
+        const line = addLine('pocket-narration pocket-thinking', text);
+        const slow = setTimeout(() => {
+            line.textContent = 'Still thinking (the first story of the day can take a little while)';
+        }, 8000);
+        return { remove: () => { clearTimeout(slow); line.remove(); } };
     }
 
     function applyReply(reply) {
@@ -993,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSuggestions([]);
         say('');
         setAnimation('sleeping', 'bedroom');
-        const thinking = addLine('pocket-narration pocket-thinking', 'Once upon a time');
+        const thinking = addThinking('Once upon a time');
 
         callAdventure({ start: true })
             .then(result => {
@@ -1021,10 +1028,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         setBusy(true);
-        input.value = '';
+        if (input.value.trim() === command) input.value = '';
         say('');
         addLine('pocket-you', '> ' + command);
-        const thinking = addLine('pocket-narration pocket-thinking', 'The narrator is thinking');
+        const thinking = addThinking('The narrator is thinking');
 
         callAdventure({ input: command, history: historyForServer() })
             .then(result => {
