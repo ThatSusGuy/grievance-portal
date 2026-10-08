@@ -868,6 +868,9 @@ document.addEventListener('DOMContentLoaded', () => {
         quota: 'Pixel Ridit is exhausted (too many turns today). Try again a bit later 😴',
         rate_limited: 'Whoa, slow down! Pixel Ridit needs a breather. Try again in a few minutes 😴',
         blocked: 'The narrator blushed and refused to describe that 🙈 Try something else.',
+        needs_permission: "Pocket Ridit isn't allowed online yet. Ridit needs to run testPocketRidit once in Apps Script 🔧",
+        old_backend: "Pocket Ridit's backend isn't updated yet. Ridit needs to deploy the new Apps Script version 🔧",
+        unreachable: "Couldn't reach the portal's backend. Check your internet and try again 📶",
         empty_input: 'Type something for Ridit to do first 😗'
     };
     const FALLBACK_ERROR = 'The narrator got distracted by a Bournville. Try again 🍫';
@@ -887,6 +890,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(story));
         } catch (err) { /* private mode: the story just won't persist */ }
+    }
+
+    function showError(err) {
+        const code = err && err.code;
+        const note = addLine('pocket-note', ERROR_LINES[code] || FALLBACK_ERROR);
+        if (code && code !== 'empty_input') {
+            const why = document.createElement('span');
+            why.className = 'pocket-debug';
+            why.textContent = ' [' + code + (err.detail ? ': ' + err.detail : '') + ']';
+            note.appendChild(why);
+        }
     }
 
     function addLine(className, text) {
@@ -954,7 +968,16 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify(Object.assign({ action: 'adventure' }, body)),
             signal: controller.signal
         })
-            .then(response => response.json())
+            .then(response => response.text())
+            .then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (err) {
+                    // The old backend has no doPost and answers with an HTML error page
+                    const code = /doPost/.test(text) ? 'old_backend' : 'unreachable';
+                    return { status: 'error', code: code, detail: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) };
+                }
+            }, () => ({ status: 'error', code: 'unreachable' }))
             .finally(() => clearTimeout(timeout));
     }
 
@@ -983,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(err => {
                 thinking.remove();
-                addLine('pocket-note', ERROR_LINES[err && err.code] || FALLBACK_ERROR);
+                showError(err);
                 // with no opening yet, any turn restarts the story
                 renderSuggestions(['start again']);
             })
@@ -1015,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(err => {
                 thinking.remove();
-                addLine('pocket-note', ERROR_LINES[err && err.code] || FALLBACK_ERROR);
+                showError(err);
                 if (!input.value) input.value = command;
             })
             .finally(() => {

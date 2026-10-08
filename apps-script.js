@@ -28,6 +28,9 @@
  *     > Add script property: name GEMINI_API_KEY, value = your key.
  *     Never paste the key into this file — it's published on GitHub.
  *     Optional: add GEMINI_MODEL to force a specific model.
+ *     To check it works (and to grant the "connect to an external service"
+ *     permission), pick testPocketRidit in the function dropdown at the top
+ *     of the editor and click Run, then read the Execution log.
  */
 
 const SHEET_ID = '154bYiZGAx4zsmapF8zZCYF5ObYy1_OiUBhQ98FwZtF8';
@@ -570,11 +573,22 @@ function adventureTurn(body) {
   };
 
   var result = callGemini(apiKey, request, props, cache);
-  if (!result.ok) return { status: 'error', code: result.code };
+  if (!result.ok) return { status: 'error', code: result.code, detail: result.detail };
 
   var reply = normalizeAdventureReply(result.text);
-  if (!reply) return { status: 'error', code: 'bad_reply' };
+  if (!reply) return { status: 'error', code: 'bad_reply', detail: String(result.text).slice(0, 200) };
   return { status: 'success', reply: reply };
+}
+
+// Run this from the Apps Script editor (function dropdown > testPocketRidit
+// > Run). The first run asks for permission to reach Gemini; the log then
+// shows whether a story starts, or exactly why not.
+function testPocketRidit() {
+  var key = String(PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || '').trim();
+  Logger.log('GEMINI_API_KEY set: ' + (key ? 'yes (' + key.length + ' characters)' : 'NO'));
+  var result = adventureTurn({ action: 'adventure', start: true });
+  Logger.log(JSON.stringify(result, null, 2));
+  Logger.log(result.status === 'success' ? 'Pocket Ridit works!' : 'Pocket Ridit failed: ' + result.code);
 }
 
 // Tries models in order until one answers. Free-tier quotas are per model,
@@ -592,6 +606,7 @@ function callGemini(apiKey, request, props, cache) {
   delete plain.generationConfig.thinkingConfig;
 
   var lastCode = 'ai_unavailable';
+  var attempts = [];
   for (var i = 0; i < models.length; i++) {
     var noThinkKey = 'adventure_nothink_' + models[i];
     var skipThinking = cache.get(noThinkKey) === '1';
@@ -603,9 +618,11 @@ function callGemini(apiKey, request, props, cache) {
       if (response.status === 200) cache.put(noThinkKey, '1', 21600);
     }
 
+    attempts.push(models[i] + ': ' + describeGeminiResponse(response));
+
     if (response.status === 200) {
       var text = geminiText(response.json);
-      if (text === null) return { ok: false, code: 'blocked' };
+      if (text === null) return { ok: false, code: 'blocked', detail: attempts.join(' | ') };
       cache.put('adventure_model', models[i], 21600);
       return { ok: true, text: text };
     }
@@ -613,11 +630,24 @@ function callGemini(apiKey, request, props, cache) {
     if (response.status === 400 || response.status === 401 || response.status === 403) {
       // A bad or restricted key fails the same way on every model
       var message = JSON.stringify(response.json || {});
-      if (/API_KEY|api key|PERMISSION_DENIED/i.test(message)) return { ok: false, code: 'bad_key' };
+      if (/API_KEY|api key|PERMISSION_DENIED/i.test(message)) {
+        return { ok: false, code: 'bad_key', detail: attempts.join(' | ') };
+      }
+    }
+    // Apps Script hasn't been allowed to reach the internet yet
+    if (response.status === 0 && /permission|authoriz/i.test(response.error || '')) {
+      return { ok: false, code: 'needs_permission', detail: response.error };
     }
     lastCode = response.status === 429 ? 'quota' : 'ai_unavailable';
   }
-  return { ok: false, code: lastCode };
+  return { ok: false, code: lastCode, detail: attempts.join(' | ').slice(0, 600) };
+}
+
+// Short, key-free summary of a Gemini response for error messages
+function describeGeminiResponse(response) {
+  if (response.status === 0) return 'request failed (' + String(response.error || '').slice(0, 120) + ')';
+  var err = response.json && response.json.error;
+  return response.status + (err ? ' ' + (err.status || '') + ' ' + String(err.message || '').slice(0, 120) : '');
 }
 
 function fetchGemini(apiKey, model, request) {
@@ -635,7 +665,7 @@ function fetchGemini(apiKey, model, request) {
     try { json = JSON.parse(res.getContentText()); } catch (err) { /* non-JSON error page */ }
     return { status: res.getResponseCode(), json: json };
   } catch (err) {
-    return { status: 0, json: null };
+    return { status: 0, json: null, error: String(err && err.message || err) };
   }
 }
 
