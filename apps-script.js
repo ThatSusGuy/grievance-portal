@@ -17,6 +17,8 @@
  *    manual setup needed.
  * 3d. The "AgreementNotes" tab (margin notes on the Relationship
  *    Agreement) is also created automatically the first time it's read.
+ *    It's a full backup: one row per note or reply, with who wrote it
+ *    and when. Deleted notes keep their row, with a deletedAt time.
  * 4. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
  * 5. Paste it below in SHEET_ID
  * 6. In the Google Sheet, go to Extensions > Apps Script
@@ -410,12 +412,31 @@ function getMessages() {
 // Notes pinned to a spot on a page of the agreement PDF (x and y are
 // fractions of the page, 0–1), plus replies (rows with a parentId).
 // The portal makes up each note's id, so a retried add is harmless.
+// Nothing is ever erased: deleting a note only stamps deletedAt, which
+// hides it on the site but keeps the row as a backup.
 
-var NOTES_HEADERS = ['id', 'parentId', 'page', 'x', 'y', 'author', 'text', 'timestamp'];
+var NOTES_HEADERS = ['id', 'parentId', 'page', 'x', 'y', 'author', 'text', 'timestamp', 'deletedAt'];
 var NOTE_MAX_LENGTH = 1000;
+var NOTE_DELETED_COL = 9;
 
 function agreementNotesSheet() {
-  return ensureSheet(SpreadsheetApp.openById(SHEET_ID), 'AgreementNotes', NOTES_HEADERS);
+  var sheet = ensureSheet(SpreadsheetApp.openById(SHEET_ID), 'AgreementNotes', NOTES_HEADERS);
+  if (!sheet.getRange(1, NOTE_DELETED_COL).getValue()) {
+    sheet.getRange(1, NOTE_DELETED_COL).setValue('deletedAt');
+  }
+  return sheet;
+}
+
+// When the note was written. Notes made before the backend was ready
+// arrive later, so trust the portal's time unless it's clearly wrong.
+function noteTimestamp(value) {
+  var written = new Date(value);
+  var now = new Date();
+  if (isNaN(written.getTime()) || written > new Date(now.getTime() + 5 * 60000) ||
+      written < new Date('2026-01-01T00:00:00Z')) {
+    return now.toISOString();
+  }
+  return written.toISOString();
 }
 
 // A leading apostrophe stores text as-is, so a note like "=)" or "10/3"
@@ -430,7 +451,12 @@ function toFraction(value) {
 
 function getAgreementNotes() {
   var rows = agreementNotesSheet().getDataRange().getValues().slice(1);
-  var notes = rows.filter(function (r) { return r[0]; }).map(function (r) {
+  var deleted = {};
+  rows.forEach(function (r) { if (r[NOTE_DELETED_COL - 1]) deleted[String(r[0])] = true; });
+  var live = rows.filter(function (r) {
+    return r[0] && !deleted[String(r[0])] && !deleted[String(r[1] || '')];
+  });
+  var notes = live.map(function (r) {
     return {
       id: String(r[0]),
       parentId: String(r[1] || ''),
@@ -469,7 +495,7 @@ function addAgreementNote(body) {
       y: toFraction(body.y),
       author: String(body.author || '').toLowerCase().slice(0, 30),
       text: text,
-      timestamp: new Date().toISOString()
+      timestamp: noteTimestamp(body.timestamp)
     };
     var exists = ids.some(function (r) { return String(r[0]) === id; });
     if (!exists) {
@@ -484,7 +510,8 @@ function addAgreementNote(body) {
   }
 }
 
-// Deletes a note (and its replies). Only its author can delete it.
+// Hides a note (and its replies) by stamping deletedAt; the rows stay
+// in the sheet. Only its author can delete it.
 function deleteAgreementNote(body) {
   var id = String(body.id || '');
   var author = String(body.author || '').toLowerCase();
@@ -503,14 +530,15 @@ function deleteAgreementNote(body) {
     for (var i = 1; i < rows.length; i++) {
       if (String(rows[i][0]) === id) target = rows[i];
     }
-    if (!target) return { status: 'success' }; // already gone
+    if (!target) return { status: 'success' }; // nothing to delete
     if (String(target[5] || '').toLowerCase() !== author) {
       return { status: 'error', code: 'forbidden' };
     }
-    // Bottom-up, so earlier row numbers stay valid
-    for (var j = rows.length - 1; j >= 1; j--) {
-      if (String(rows[j][0]) === id || String(rows[j][1]) === id) {
-        sheet.deleteRow(j + 1);
+    var deletedAt = new Date().toISOString();
+    for (var j = 1; j < rows.length; j++) {
+      var isMatch = String(rows[j][0]) === id || String(rows[j][1]) === id;
+      if (isMatch && !rows[j][NOTE_DELETED_COL - 1]) {
+        sheet.getRange(j + 1, NOTE_DELETED_COL).setValue(deletedAt);
       }
     }
     return { status: 'success' };
