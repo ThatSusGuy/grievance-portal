@@ -1114,6 +1114,15 @@ button:hover {
     font-size: 0.9em;
 }
 
+.pocket-log .pocket-debug {
+    display: block;
+    font-style: normal;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75em;
+    color: #888;
+    word-break: break-word;
+}
+
 .pocket-log .pocket-thinking {
     color: #777;
 }
