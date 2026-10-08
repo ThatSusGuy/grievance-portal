@@ -37,9 +37,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const sctx = sprite.getContext('2d');
     const SOX = 20, SOY = 42; // sprite origin: between his feet
 
+    // Ridit's head, traced from his photo: big swept hair with a fringe,
+    // thick brows, ears, light stubble. Column 0 is x = -7; row 0 is T - 4.
+    // H hair, h hair highlight, S skin, s nose shade, E ear, B stubble
+    const HEAD = [
+        '...hHHHHh.....',
+        '.HHHHhHHHHHH..',
+        'HHHHHHHhHHHHH.',
+        'HHHhHHHHHHhHHH',
+        'HHHHHHHHHHHHHH',
+        '.HHHHHHHHSSSH.',
+        '.HHHHHSSSSSSH.',
+        '.HHHSSSSSSSSH.',
+        '.HSSSSSSSSSSH.',
+        '.ESSSSSSSSSSE.',
+        '.ESSSSSSSSSSE.',
+        '.ESSSSsSSSSSE.',
+        '..SSSBBBBSSS..',
+        '..BSSSSSSSSB..',
+        '...BBBBBBBB...',
+        '....BBBBBB....'
+    ];
+
     const C = {
-        skin: '#c68a62', skinShade: '#a8704c', hair: '#221a1a',
-        hoodie: '#5d429a', hoodieShade: '#4a3580', pants: '#2e3550',
+        skin: '#cf9670', skinShade: '#b07a56', hair: '#241913', hairLight: '#4a3326',
+        stubble: '#b47e5c', hoodie: '#2d3446', hoodieShade: '#222838', collar: '#414a60',
+        pants: '#3d4f73',
         shoe: '#f4f4f4', eye: '#1a1a1a', mouth: '#5a2323', white: '#ffffff',
         blush: '#ef7f9c', heart: '#e8344e', angry: '#d9483b',
         wrapper: '#4b1f5c', gold: '#d4a63a', choc: '#5a3420'
@@ -126,30 +149,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Hoodie
+        // Dark crewneck sweatshirt
         const B = -19 + up;
         p(-6, B, 12, 11, C.hoodie);
         p(-6, B + 9, 12, 2, C.hoodieShade);
-        p(-4, B, 8, 1, C.hoodieShade);
-        p(-2, B + 1, 1, 2, C.white); p(1, B + 1, 1, 2, C.white);
-        p(-3, B + 5, 6, 2, C.hoodieShade);
+        p(-4, B, 8, 1, C.collar);
+        p(-2, B, 4, 1, C.skinShade);
 
         // Head
-        const T = -30 + up;
-        p(-6, T, 12, 3, C.hair);
-        p(-2, T - 1, 3, 1, C.hair); p(2, T - 1, 1, 1, C.hair); p(-4, T - 1, 1, 1, C.hair);
-        p(-5, T + 3, 10, 8, C.skin);
-        p(-6, T + 3, 1, 3, C.hair); p(5, T + 3, 1, 3, C.hair);
-        p(-6, T + 6, 1, 2, C.skinShade); p(5, T + 6, 1, 2, C.skinShade);
-        p(-5, T + 3, 3, 1, C.hair); p(1, T + 3, 3, 1, C.hair);
+        const T = -31 + up;
+        const HEAD_COLORS = { H: C.hair, h: C.hairLight, S: C.skin, s: C.skinShade, E: C.skinShade, B: C.stubble };
+        HEAD.forEach((row, r) => {
+            for (let col = 0; col < row.length; col++) {
+                if (row[col] !== '.') p(col - 7, T - 4 + r, 1, 1, HEAD_COLORS[row[col]]);
+            }
+        });
 
         if (pose.tint > 0) {
             s.globalAlpha = Math.min(1, pose.tint);
-            p(-5, T + 4, 10, 7, C.angry);
+            p(-5, T + 2, 10, 8, C.angry);
             s.globalAlpha = 1;
         }
 
-        const E = T + 6, M = T + 9, lx = -3, rx = 2, look = pose.look;
+        const E = T + 5, M = T + 9, lx = -3, rx = 2, look = pose.look;
+
+        // Thick brows, which also carry most of his expressions
+        if (pose.brows === 'angry') {
+            p(-4, E - 2, 2, 1, C.hair); p(-2, E - 1, 1, 1, C.hair);
+            p(1, E - 1, 1, 1, C.hair); p(2, E - 2, 2, 1, C.hair);
+        } else if (pose.brows === 'sad') {
+            p(-4, E - 1, 1, 1, C.hair); p(-3, E - 2, 2, 1, C.hair);
+            p(1, E - 2, 2, 1, C.hair); p(3, E - 1, 1, 1, C.hair);
+        } else {
+            p(-4, E - 2, 3, 1, C.hair); p(1, E - 2, 3, 1, C.hair);
+        }
+
         switch (pose.eyes) {
             case 'closed':
                 p(lx - 1, E + 1, 2, 1, C.eye); p(rx, E + 1, 2, 1, C.eye); break;
@@ -168,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 glyph(s, 'x', SOX + lx - 1, SOY + E - 1, C.eye);
                 glyph(s, 'x', SOX + rx - 1, SOY + E - 1, C.eye); break;
             case 'wide':
-                p(lx - 1, E - 1, 3, 3, C.white); p(rx - 1, E - 1, 3, 3, C.white);
+                p(lx - 1, E, 3, 2, C.white); p(rx - 1, E, 3, 2, C.white);
                 p(lx, E, 1, 1, C.eye); p(rx, E, 1, 1, C.eye); break;
             case 'down':
                 p(lx, E + 1, 1, 1, C.eye); p(rx, E + 1, 1, 1, C.eye); break;
@@ -178,21 +212,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 p(lx + look, E, 1, 2, C.eye); p(rx + look, E, 1, 2, C.eye);
         }
 
-        if (pose.brows === 'angry') {
-            p(-4, E - 2, 1, 1, C.hair); p(-3, E - 1, 1, 1, C.hair);
-            p(2, E - 1, 1, 1, C.hair); p(3, E - 2, 1, 1, C.hair);
-        } else if (pose.brows === 'sad') {
-            p(-4, E - 1, 1, 1, C.hair); p(-3, E - 2, 1, 1, C.hair);
-            p(2, E - 2, 1, 1, C.hair); p(3, E - 1, 1, 1, C.hair);
-        }
-
         if (pose.blush) {
             p(-5, E + 2, 2, 1, C.blush); p(3, E + 2, 2, 1, C.blush);
         }
 
         switch (pose.mouth) {
             case 'big':
-                p(-2, M - 1, 4, 1, C.mouth); p(-1, M, 2, 1, C.mouth); break;
+                p(-3, M - 1, 6, 1, C.mouth); p(-2, M - 1, 4, 1, C.white); p(-2, M, 4, 1, C.mouth); break;
             case 'flat':
                 p(-1, M, 2, 1, C.mouth); break;
             case 'frown':
@@ -207,7 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 p(-2, M, 1, 1, C.mouth); p(-1, M - 1, 1, 1, C.mouth);
                 p(0, M, 1, 1, C.mouth); p(1, M - 1, 1, 1, C.mouth); break;
             default:
-                p(-2, M - 1, 1, 1, C.mouth); p(-1, M, 2, 1, C.mouth); p(1, M - 1, 1, 1, C.mouth);
+                // his wide grin
+                p(-3, M - 1, 1, 1, C.mouth); p(-2, M, 4, 1, C.mouth); p(2, M - 1, 1, 1, C.mouth);
         }
 
         // Arms: a 2px hoodie line from shoulder to hand, then the hand
@@ -446,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.globalAlpha = 1;
                 break;
             case 'sweat':
-                if (Math.floor(t * 2) % 3 !== 2) glyph(ctx, 'drop', hx + 7, hy + 3 + Math.floor(t * 4) % 3, '#6cc4ff');
+                if (Math.floor(t * 2) % 3 !== 2) glyph(ctx, 'drop', hx + 7, hy + 7 + Math.floor(t * 4) % 3, '#6cc4ff');
                 break;
             case 'tears': {
                 const ph = (t * 1.2) % 1;
@@ -728,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(sprite, -SOX, -SOY);
             ctx.restore();
             if (frame.lying.onBed) ROOMS.bedroomFront();
-            hx = x - 25;
+            hx = x - 27;
             hy = y - 9;
         } else {
             const gy = (frame.groundY || GROUND) + (frame.jump || 0);
@@ -743,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.drawImage(sprite, frame.x - SOX, gy - SOY);
             }
             hx = frame.x;
-            hy = gy - 31 + up;
+            hy = gy - 35 + up;
         }
 
         (frame.fx || []).forEach(name => drawEffect(name, now / 1000, hx, hy));
