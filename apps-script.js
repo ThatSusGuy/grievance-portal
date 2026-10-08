@@ -12,7 +12,7 @@
  *    word | hint
  *    Add one row per secret word (with an optional hint). The portal
  *    picks a random word from the list for each new game.
- * 3c. The "Grievances" and "GameLog" tabs (used by the stats page) are
+ * 3c. The "Grievances", "GameLog" and "Stories" (Pocket Ridit saves) tabs (used by the stats page) are
  *    created automatically the first time something is logged — no
  *    manual setup needed.
  * 4. Copy the Sheet ID from the URL (the long string between /d/ and /edit)
@@ -417,6 +417,12 @@ function doPost(e) {
 
   if (body.action === 'adventure') {
     return jsonOutput(adventureTurn(body));
+  } else if (body.action === 'saveStory') {
+    return jsonOutput(saveStoryRow(body));
+  } else if (body.action === 'listStories') {
+    return jsonOutput(listStoryRows(body));
+  } else if (body.action === 'getStory') {
+    return jsonOutput(getStoryRow(body));
   }
   return jsonOutput({ status: 'error', code: 'unknown_action' });
 }
@@ -842,4 +848,125 @@ function normalizeAdventureReply(text) {
     location: location,
     suggestions: suggestions
   };
+}
+
+// ── Pocket Ridit saved stories ─────────────────────────────────────
+// One row per story in the "Stories" tab, filed under the login name so
+// each person sees their own. The whole story is kept as JSON from column
+// G onwards: a Sheets cell holds 50,000 characters, so a long story simply
+// continues into H, I, J... and is stitched back together when loaded.
+
+var STORY_CHUNK_CHARS = 45000;
+var STORY_MAX_CHUNKS = 40; // ~1.8 million characters, thousands of moves
+var STORY_DATA_COLUMN = 7;
+var STORY_COLUMNS = ['id', 'user', 'title', 'updatedAt', 'moves', 'preview', 'data'];
+
+function storiesSheet() {
+  return ensureSheet(SpreadsheetApp.openById(SHEET_ID), 'Stories', STORY_COLUMNS);
+}
+
+function storyUser(value) {
+  return String(value || '').trim().toLowerCase().slice(0, 40);
+}
+
+// Keeps Sheets from reading text like "=..." as a formula
+function sheetText(value) {
+  var text = String(value || '');
+  return /^[=+\-@]/.test(text) ? ' ' + text : text;
+}
+
+function findStoryRow(sheet, id) {
+  var cell = sheet.getRange('A:A').createTextFinder(id).matchEntireCell(true).findNext();
+  return cell ? cell.getRow() : 0;
+}
+
+function saveStoryRow(body) {
+  var user = storyUser(body.user);
+  var story = body.story;
+  if (!user || !story || typeof story.id !== 'string' || !/^[a-z0-9_-]{4,40}$/i.test(story.id) ||
+      !story.opening || typeof story.opening.narration !== 'string' || !Array.isArray(story.turns)) {
+    return { status: 'error', code: 'bad_story' };
+  }
+
+  var copy = {
+    id: story.id,
+    title: String(story.title || '').slice(0, 60),
+    createdAt: Number(story.createdAt) || Date.now(),
+    updatedAt: Number(story.updatedAt) || Date.now(),
+    opening: story.opening,
+    turns: story.turns
+  };
+  var data = JSON.stringify(copy);
+  // only a truly enormous story would ever lose its oldest moves
+  while (data.length > STORY_CHUNK_CHARS * STORY_MAX_CHUNKS && copy.turns.length > 1) {
+    copy.turns.splice(0, Math.ceil(copy.turns.length / 10));
+    data = JSON.stringify(copy);
+  }
+  var chunks = [];
+  for (var i = 0; i < data.length; i += STORY_CHUNK_CHARS) chunks.push(data.slice(i, i + STORY_CHUNK_CHARS));
+
+  var last = copy.turns.length ? copy.turns[copy.turns.length - 1].reply : copy.opening;
+  var values = [copy.id, user, sheetText(copy.title), new Date(copy.updatedAt).toISOString(),
+    copy.turns.length, sheetText(String((last && last.narration) || '').slice(0, 140))].concat(chunks);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = storiesSheet();
+    var row = findStoryRow(sheet, copy.id);
+    if (row) {
+      // only the person who started a story can overwrite it
+      if (storyUser(sheet.getRange(row, 2).getValue()) !== user) return { status: 'error', code: 'not_yours' };
+      // blank out any leftover pieces from a longer earlier version
+      while (values.length < sheet.getLastColumn()) values.push('');
+      sheet.getRange(row, 1, 1, values.length).setValues([values]);
+    } else {
+      sheet.appendRow(values);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  return { status: 'success', moves: copy.turns.length, cells: chunks.length };
+}
+
+// The shelf: every story for this person, newest first, without the
+// heavy JSON column
+function listStoryRows(body) {
+  var user = storyUser(body.user);
+  if (!user) return { status: 'error', code: 'bad_story' };
+  var sheet = storiesSheet();
+  var lastRow = sheet.getLastRow();
+  var stories = [];
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, 6).getValues().forEach(function (row) {
+      if (!row[0] || storyUser(row[1]) !== user) return;
+      stories.push({
+        id: String(row[0]),
+        title: String(row[2]).trim(),
+        updatedAt: Date.parse(toIsoString(row[3])) || 0,
+        moves: Number(row[4]) || 0,
+        preview: String(row[5]).trim()
+      });
+    });
+  }
+  stories.sort(function (a, b) { return b.updatedAt - a.updatedAt; });
+  return { status: 'success', stories: stories.slice(0, 100) };
+}
+
+function getStoryRow(body) {
+  var user = storyUser(body.user);
+  var id = String(body.id || '');
+  if (!user || !id) return { status: 'error', code: 'bad_story' };
+  var sheet = storiesSheet();
+  var row = findStoryRow(sheet, id);
+  if (!row) return { status: 'error', code: 'not_found' };
+  var values = sheet.getRange(row, 1, 1, Math.max(STORY_DATA_COLUMN, sheet.getLastColumn())).getValues()[0];
+  if (storyUser(values[1]) !== user) return { status: 'error', code: 'not_found' };
+  var data = '';
+  for (var c = STORY_DATA_COLUMN - 1; c < values.length && values[c] !== ''; c++) data += String(values[c]);
+  try {
+    return { status: 'success', story: JSON.parse(data) };
+  } catch (err) {
+    return { status: 'error', code: 'bad_story' };
+  }
 }

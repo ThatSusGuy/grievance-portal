@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('pocket-input');
     const sendBtn = document.getElementById('pocket-send-btn');
     const restartBtn = document.getElementById('pocket-restart-btn');
+    const shelfBtn = document.getElementById('pocket-shelf-btn');
+    const shelfEl = document.getElementById('pocket-shelf');
+    const shelfList = document.getElementById('pocket-shelf-list');
 
     // Keep in sync with ADVENTURE_ANIMATIONS / ADVENTURE_LOCATIONS in apps-script.js
     const ANIMATIONS = ['sleeping', 'waking', 'idle', 'talking', 'walking', 'eating',
@@ -1627,8 +1630,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // The story
     // =====================================================================
 
-    const STORAGE_KEY = 'pocketRiditStory';
-    const MAX_SAVED_TURNS = 60;
+    const LIBRARY_KEY = 'pocketRiditStories';
+    const OLD_STORY_KEY = 'pocketRiditStory';
+    const MAX_SAVED_TURNS = 3000; // effectively unlimited; Gemini only ever sees the last 10
+    const MAX_LOCAL_STORIES = 25;
     const HISTORY_SENT = 10;
     const ERROR_LINES = {
         no_key: "Pocket Ridit isn't switched on yet. Tell Ridit to add the Gemini key 🔑",
@@ -1645,21 +1650,106 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const FALLBACK_ERROR = 'The narrator got distracted by a Bournville. Try again 🍫';
 
-    let story = loadStory();
+    // ---- Saved stories ------------------------------------------------
+    // Every story is saved twice: in this browser (so it opens instantly)
+    // and in the Google Sheet (so it's never lost and works on any device).
+    // Stories belong to whoever is logged in.
+
+    const portalUser = () => sessionStorage.getItem('portalUser') || 'guest';
+    let library = loadLibrary();
+    let story = library.stories[library.currentId] || emptyStory();
     let busy = false;
 
-    function loadStory() {
-        try {
-            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-            if (saved && saved.opening && Array.isArray(saved.turns)) return saved;
-        } catch (err) { /* storage unavailable or corrupt: start fresh */ }
-        return { opening: null, turns: [] };
+    function emptyStory() {
+        return { id: null, title: '', opening: null, turns: [] };
     }
 
-    function saveStory() {
+    function newStoryId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function isStory(value) {
+        return value && typeof value.id === 'string' && value.opening && Array.isArray(value.turns);
+    }
+
+    function loadLibrary() {
+        const lib = { stories: {}, currentId: null };
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(story));
-        } catch (err) { /* private mode: the story just won't persist */ }
+            const saved = JSON.parse(localStorage.getItem(LIBRARY_KEY) || 'null');
+            if (saved && saved.stories) {
+                Object.keys(saved.stories).forEach(id => {
+                    if (isStory(saved.stories[id])) lib.stories[id] = saved.stories[id];
+                });
+                lib.currentId = lib.stories[saved.currentId] ? saved.currentId : null;
+            }
+            // The single story saved before the shelf existed becomes the first one on it
+            const old = JSON.parse(localStorage.getItem(OLD_STORY_KEY) || 'null');
+            if (old && old.opening && Array.isArray(old.turns)) {
+                const id = newStoryId();
+                lib.stories[id] = {
+                    id: id, user: sessionStorage.getItem('portalUser') || 'guest', title: 'Our first story',
+                    createdAt: Date.now(), updatedAt: Date.now(),
+                    opening: old.opening, turns: old.turns, unsynced: true
+                };
+                lib.currentId = lib.currentId || id;
+                localStorage.removeItem(OLD_STORY_KEY);
+            }
+        } catch (err) { /* storage unavailable or corrupt: start fresh */ }
+        return lib;
+    }
+
+    function saveLibrary() {
+        // keep only the most recent stories in the browser; the Sheet has them all
+        const ids = Object.keys(library.stories)
+            .sort((a, b) => (library.stories[b].updatedAt || 0) - (library.stories[a].updatedAt || 0));
+        ids.slice(MAX_LOCAL_STORIES).forEach(id => {
+            if (!library.stories[id].unsynced && id !== library.currentId) delete library.stories[id];
+        });
+        // if the browser runs out of room, let go of the oldest stories that
+        // are already safe in the Sheet and try again
+        for (let attempt = 0; attempt < 10; attempt++) {
+            try {
+                localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
+                return;
+            } catch (err) {
+                const spare = Object.keys(library.stories)
+                    .filter(id => !library.stories[id].unsynced && id !== library.currentId)
+                    .sort((a, b) => (library.stories[a].updatedAt || 0) - (library.stories[b].updatedAt || 0));
+                if (!spare.length) return; // private mode or truly full: the Sheet copy still keeps it
+                delete library.stories[spare[0]];
+            }
+        }
+    }
+
+    // Saves the current story here and in the Sheet
+    function saveStory() {
+        if (!story.id) return;
+        story.updatedAt = Date.now();
+        story.unsynced = true;
+        library.stories[story.id] = story;
+        library.currentId = story.id;
+        saveLibrary();
+        uploadStory(story);
+    }
+
+    function uploadStory(target) {
+        const copy = Object.assign({}, target);
+        delete copy.unsynced;
+        const savedAt = target.updatedAt;
+        callAdventure({ action: 'saveStory', user: target.user || portalUser(), story: copy }).then(result => {
+            // only clear the flag if nothing changed while we were uploading
+            if (result && result.status === 'success' && target.updatedAt === savedAt) {
+                target.unsynced = false;
+                saveLibrary();
+            }
+        });
+    }
+
+    // Anything that failed to upload earlier (offline, old backend) gets another go
+    function uploadPending() {
+        Object.keys(library.stories).forEach(id => {
+            if (library.stories[id].unsynced) uploadStory(library.stories[id]);
+        });
     }
 
     function showError(err) {
@@ -1735,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function callAdventure(body) {
         const url = window.APPS_SCRIPT_URL;
-        if (!url) return Promise.reject(new Error('no url'));
+        if (!url) return Promise.resolve({ status: 'error', code: 'unreachable' });
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 90000);
         // text/plain keeps this a "simple" request, so no CORS preflight
@@ -1767,35 +1857,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // instantly instead of waiting on Gemini. Gemini takes over from her
     // first move.
     const OPENINGS = [
-        { narration: 'Morning light spills across the bedroom. You wake up absolutely starving, and Ridit is asleep beside you, snoring like a tiny tractor. Somewhere in the kitchen, a Bournville sits on the top shelf, just out of reach.',
+        { title: 'Bournville heist', narration: 'Morning light spills across the bedroom. You wake up absolutely starving, and Ridit is asleep beside you, snoring like a tiny tractor. Somewhere in the kitchen, a Bournville sits on the top shelf, just out of reach.',
             speech: '', animation: 'sleeping', location: 'bedroom', suggestions: ['wake ridit', 'go to the kitchen', 'steal his blanket'] },
-        { narration: 'The living room, late evening. Ridit has been sentenced to the couch for a crime he claims not to remember. A tiny rain cloud hovers over his head. You hold the evidence.',
+        { title: 'The couch sentence', narration: 'The living room, late evening. Ridit has been sentenced to the couch for a crime he claims not to remember. A tiny rain cloud hovers over his head. You hold the evidence.',
             speech: 'I was framed, babylove', animation: 'couch', location: 'living_room', suggestions: ['read him the charges', 'pardon him', 'take the remote'] },
-        { narration: 'Ridit has announced that he is cooking dinner tonight. There is smoke. He insists the smoke is "part of the recipe" and flips something that may once have been an egg.',
+        { title: 'Ridit cooks dinner', narration: 'Ridit has announced that he is cooking dinner tonight. There is smoke. He insists the smoke is "part of the recipe" and flips something that may once have been an egg.',
             speech: 'Trust the process', animation: 'cooking', location: 'kitchen', suggestions: ['taste it', 'open a window', 'order pizza instead'] },
-        { narration: 'Date night at the cafe. The bill arrives on a little tray. Ridit pats his pockets, then pats them again, with growing horror. His wallet is not in any of them.',
+        { title: 'The missing wallet', narration: 'Date night at the cafe. The bill arrives on a little tray. Ridit pats his pockets, then pats them again, with growing horror. His wallet is not in any of them.',
             speech: 'I definitely had it', animation: 'shocked', location: 'cafe', suggestions: ['make him wash dishes', 'pay and gloat', 'check his jacket'] },
-        { narration: 'An evening walk. Ridit insists he knows exactly where the park is. He has turned left three times. You are now back where you started.',
+        { title: 'Lost on a walk', narration: 'An evening walk. Ridit insists he knows exactly where the park is. He has turned left three times. You are now back where you started.',
             speech: "It's a shortcut", animation: 'walking', location: 'outside', suggestions: ['ask for directions', 'hold his hand', 'race him home'] },
-        { narration: 'It is 2am and you are wide awake and in need of attention. Ridit is asleep, snoring loudly enough to rattle the window.',
+        { title: '2am attention', narration: 'It is 2am and you are wide awake and in need of attention. Ridit is asleep, snoring loudly enough to rattle the window.',
             speech: '', animation: 'sleeping', location: 'bedroom', suggestions: ['poke his cheek', 'whisper bournville', 'steal all the blanket'] },
-        { narration: 'From the bathroom comes a dramatic, slightly off-key ballad. Ridit is in the shower, performing for an audience of one rubber duck. He is also using your shampoo.',
+        { title: 'The shower ballad', narration: 'From the bathroom comes a dramatic, slightly off-key ballad. Ridit is in the shower, performing for an audience of one rubber duck. He is also using your shampoo.',
             speech: '🎵 And I will always love youuu', animation: 'showering', location: 'shower', suggestions: ['turn off the hot water', 'join the chorus', 'hide his towel'] },
-        { narration: 'Up on the rooftop, fairy lights twinkle over the city. Ridit has brought a guitar he cannot actually play, and he is about to serenade you anyway.',
+        { title: 'Rooftop serenade', narration: 'Up on the rooftop, fairy lights twinkle over the city. Ridit has brought a guitar he cannot actually play, and he is about to serenade you anyway.',
             speech: 'This one is for you', animation: 'guitar', location: 'rooftop', suggestions: ['request a love song', 'sing along', 'take the guitar'] },
-        { narration: 'At the supermarket you turn your back for one second. When you look again, Ridit is tiptoeing away from the trolley, which is now mostly Bournville.',
+        { title: 'The chocolate trolley', narration: 'At the supermarket you turn your back for one second. When you look again, Ridit is tiptoeing away from the trolley, which is now mostly Bournville.',
             speech: 'Those were already there', animation: 'sneaky', location: 'supermarket', suggestions: ['check the trolley', 'interrogate him', 'add more chocolate'] },
-        { narration: 'At the gym, Ridit has done exactly one push-up. He is now flexing in the mirror and asking strangers if they can see his abs.',
+        { title: 'Gym day', narration: 'At the gym, Ridit has done exactly one push-up. He is now flexing in the mirror and asking strangers if they can see his abs.',
             speech: 'Feel this muscle, babylove', animation: 'flexing', location: 'gym', suggestions: ['poke his arm', 'make him do a set', 'take a photo'] },
-        { narration: 'You are at the movies and the film has just started. Ridit is scrolling on his phone, the screen lighting up his face like a lighthouse.',
+        { title: 'Movie night', narration: 'You are at the movies and the film has just started. Ridit is scrolling on his phone, the screen lighting up his face like a lighthouse.',
             speech: 'One sec, one sec...', animation: 'phone', location: 'cinema', suggestions: ['where my man at', 'steal his popcorn', 'take his phone'] },
-        { narration: 'A perfect beach day. Ridit is already in the sea, waving his arms and shouting that the water is "totally not cold". His lips are slightly blue.',
+        { title: 'Beach day', narration: 'A perfect beach day. Ridit is already in the sea, waving his arms and shouting that the water is "totally not cold". His lips are slightly blue.',
             speech: 'Come in, it is warm!', animation: 'swimming', location: 'beach', suggestions: ['jump in', 'stay on the towel', 'bury his shoes'] },
-        { narration: 'The party is in full swing. Ridit has discovered the dance floor and is doing a move that looks like a confused octopus. People are filming.',
+        { title: 'Party animal', narration: 'The party is in full swing. Ridit has discovered the dance floor and is doing a move that looks like a confused octopus. People are filming.',
             speech: 'THIS IS MY SONG', animation: 'dancing', location: 'party', suggestions: ['dance with him', 'drag him home', 'request a slow song'] },
-        { narration: 'Ridit is at his desk, typing furiously. He promised it would be "five more minutes" an hour ago. You have been counting.',
+        { title: 'Five more minutes', narration: 'Ridit is at his desk, typing furiously. He promised it would be "five more minutes" an hour ago. You have been counting.',
             speech: 'Almost done, I swear', animation: 'working', location: 'office', suggestions: ['close his laptop', 'sit on his desk', 'bring him a bournville'] },
-        { narration: 'You are standing by the car, ready to leave. Ridit has searched every pocket three times. The car keys are, as always, nowhere.',
+        { title: 'Where are the keys?', narration: 'You are standing by the car, ready to leave. Ridit has searched every pocket three times. The car keys are, as always, nowhere.',
             speech: 'They were RIGHT here', animation: 'confused', location: 'car', suggestions: ['check his hand', 'help him look', 'call a taxi'] }
     ];
 
@@ -1810,13 +1900,138 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startStory() {
         if (busy) return;
+        closeShelf();
         logEl.innerHTML = '';
         say('');
         const opening = pickOpening();
-        story = { opening: opening, turns: [] };
+        const title = opening.title;
+        delete opening.title;
+        story = { id: newStoryId(), user: portalUser(), title: title, createdAt: Date.now(), opening: opening, turns: [] };
         saveStory();
         addLine('pocket-narration', opening.narration);
         applyReply(opening);
+    }
+
+    // ---- The shelf ----------------------------------------------------
+
+    function timeAgo(ms) {
+        if (!ms) return '';
+        const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(ms).setHours(0, 0, 0, 0)) / 86400000);
+        const time = new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        if (days <= 0) return 'today, ' + time;
+        if (days === 1) return 'yesterday, ' + time;
+        if (days < 7) return days + ' days ago';
+        return new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    }
+
+    function storySummary(s) {
+        const last = s.turns.length ? s.turns[s.turns.length - 1].reply : s.opening;
+        return { id: s.id, title: s.title, updatedAt: s.updatedAt, moves: s.turns.length, preview: last ? last.narration : '' };
+    }
+
+    function renderShelf(entries, note) {
+        shelfList.innerHTML = '';
+        entries.forEach(entry => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'pocket-story' + (entry.id === story.id ? ' current' : '');
+            const title = document.createElement('span');
+            title.className = 'pocket-story-title';
+            title.textContent = (entry.title || 'A story') + (entry.id === story.id ? ' (playing)' : '');
+            const meta = document.createElement('span');
+            meta.className = 'pocket-story-meta';
+            meta.textContent = entry.moves + (entry.moves === 1 ? ' move' : ' moves') + ' · ' + timeAgo(entry.updatedAt);
+            const preview = document.createElement('span');
+            preview.className = 'pocket-story-preview';
+            preview.textContent = entry.preview.length > 110 ? entry.preview.slice(0, 107) + '...' : entry.preview;
+            item.append(title, meta, preview);
+            item.addEventListener('click', () => openStory(entry.id, entry.updatedAt));
+            shelfList.appendChild(item);
+        });
+        if (note) {
+            const line = document.createElement('p');
+            line.className = 'pocket-shelf-note';
+            line.textContent = note;
+            shelfList.appendChild(line);
+        }
+    }
+
+    // stories are personal: only show the ones started by whoever is logged in
+    function mine(s) {
+        return !s.user || s.user === portalUser();
+    }
+
+    function localEntries() {
+        return Object.keys(library.stories)
+            .filter(id => mine(library.stories[id]))
+            .map(id => storySummary(library.stories[id]));
+    }
+
+    function mergeEntries(local, remote) {
+        const byId = {};
+        local.concat(remote).forEach(entry => {
+            if (!byId[entry.id] || (entry.updatedAt || 0) > (byId[entry.id].updatedAt || 0)) byId[entry.id] = entry;
+        });
+        return Object.keys(byId).map(id => byId[id]).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    }
+
+    let shelfOpen = false;
+
+    function openShelf() {
+        if (busy) return;
+        shelfOpen = true;
+        shelfEl.style.display = 'block';
+        logEl.style.display = 'none';
+        suggestionsEl.style.display = 'none';
+        form.style.display = 'none';
+        shelfBtn.textContent = 'Story 📖';
+        // show what's in this browser right away, then add anything from the Sheet
+        renderShelf(mergeEntries(localEntries(), []), 'Checking for stories on your other devices...');
+        callAdventure({ action: 'listStories', user: portalUser() }).then(result => {
+            if (!shelfOpen) return;
+            const remote = result && result.status === 'success' ? result.stories : [];
+            const entries = mergeEntries(localEntries(), remote);
+            renderShelf(entries, entries.length ? '' : 'No stories yet. Tap "New story" to start one ✨');
+        });
+    }
+
+    function closeShelf() {
+        if (!shelfOpen) return;
+        shelfOpen = false;
+        shelfEl.style.display = 'none';
+        logEl.style.display = '';
+        suggestionsEl.style.display = '';
+        form.style.display = '';
+        shelfBtn.textContent = 'Stories 📚';
+    }
+
+    function showStory(target) {
+        story = target;
+        library.stories[story.id] = story;
+        library.currentId = story.id;
+        saveLibrary();
+        closeShelf();
+        say('');
+        renderStory();
+    }
+
+    // Continue a story: from this browser if it's up to date, else from the Sheet
+    function openStory(id, updatedAt) {
+        const local = library.stories[id];
+        if (local && (local.updatedAt || 0) >= (updatedAt || 0)) {
+            showStory(local);
+            return;
+        }
+        renderShelf([], 'Opening your story...');
+        callAdventure({ action: 'getStory', user: portalUser(), id: id }).then(result => {
+            if (result && result.status === 'success' && isStory(result.story)) {
+                showStory(result.story);
+            } else if (local) {
+                showStory(local);
+            } else {
+                renderShelf(mergeEntries(localEntries(), []), "Couldn't open that story right now. Try again in a moment 📶");
+            }
+        });
     }
 
     // Apps Script sleeps when unused and takes a few seconds to wake up.
@@ -1835,6 +2050,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startStory();
             return;
         }
+        const playing = story;
         setBusy(true);
         if (input.value.trim() === command) input.value = '';
         say('');
@@ -1845,6 +2061,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(result => {
                 thinking.remove();
                 if (result.status !== 'success') throw result;
+                if (story !== playing) return;
                 story.turns.push({ input: command, reply: result.reply });
                 if (story.turns.length > MAX_SAVED_TURNS) story.turns.shift();
                 saveStory();
@@ -1867,22 +2084,13 @@ document.addEventListener('DOMContentLoaded', () => {
         takeTurn(input.value);
     });
 
-    // Starting over takes two taps so a stray click can't wipe the story
-    let restartArmed = null;
+    // Every story is kept, so a new one never wipes anything
     restartBtn.addEventListener('click', () => {
-        if (busy) return;
-        if (!restartArmed) {
-            restartBtn.textContent = 'Sure? Tap again 🔄';
-            restartArmed = setTimeout(() => {
-                restartArmed = null;
-                restartBtn.textContent = 'New story 🔄';
-            }, 3000);
-            return;
-        }
-        clearTimeout(restartArmed);
-        restartArmed = null;
-        restartBtn.textContent = 'New story 🔄';
-        startStory();
+        if (!busy) startStory();
+    });
+
+    shelfBtn.addEventListener('click', () => {
+        if (shelfOpen) closeShelf(); else openShelf();
     });
 
     openBtn.addEventListener('click', () => {
@@ -1890,6 +2098,12 @@ document.addEventListener('DOMContentLoaded', () => {
         screen.style.display = 'flex';
         startLoop();
         warmUp();
+        uploadPending();
+        if (story.opening && !mine(story)) {
+            // someone else was playing in this browser: switch to this person's latest
+            const latest = localEntries().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+            story = latest ? library.stories[latest.id] : emptyStory();
+        }
         if (story.opening) {
             renderStory();
         } else {
@@ -1901,6 +2115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         screen.style.display = 'none';
         welcomeScreen.style.display = 'flex';
         stopLoop();
+        closeShelf();
         say('');
     });
 });

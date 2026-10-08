@@ -1045,6 +1045,88 @@ button:hover {
     margin-bottom: 0;
 }
 
+.pocket-topbar button {
+    white-space: nowrap;
+    padding: 6px 10px;
+}
+
+.pocket-topbar-right {
+    display: flex;
+    gap: 2px;
+}
+
+/* ---- Story shelf ---- */
+.pocket-shelf {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    text-align: left;
+    margin: 12px 0 8px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: 12px;
+}
+
+.pocket-shelf-title {
+    font-weight: bold;
+    color: #5d429a;
+    margin: 0 0 8px;
+    font-size: 1em;
+}
+
+.pocket-shelf-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pocket-shelf-list .pocket-shelf-note {
+    color: #777;
+    font-size: 0.9em;
+    margin: 0;
+}
+
+.pocket-story {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    color: #333;
+    border: 1px solid rgba(93, 66, 154, 0.2);
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: normal;
+}
+
+.pocket-story:hover {
+    background: #ffffff;
+}
+
+.pocket-story.current {
+    border: 2px solid #e83e8c;
+}
+
+.pocket-story-title {
+    display: block;
+    font-weight: bold;
+    color: #5d429a;
+}
+
+.pocket-story-meta {
+    display: block;
+    font-size: 0.8em;
+    color: #888;
+    margin: 2px 0 4px;
+}
+
+.pocket-story-preview {
+    display: block;
+    font-size: 0.88em;
+    color: #555;
+    line-height: 1.35;
+}
+
 .pocket-stage {
     position: relative;
     border-radius: 12px;
