@@ -80,8 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const HEAD_TOP = -40; // relative to his feet; the chin sits on the collar
 
-    // Kaajal's head, from her photos and videos, drawn cute: a round, soft
-    // face, glossy dark hair with a centre part that frames her face and
+    // Kaajal's head, from her photos and videos, drawn cute: a soft oval
+    // face tapering to her chin, glossy dark hair with a centre part that frames her face and
     // puffs out to her shoulders, big shiny eyes with lashes and liner,
     // soft arched brows, a button nose, glossy pink lips and rosy cheeks.
     // Same grid as Ridit's, so expressions line up.
@@ -94,19 +94,19 @@ document.addEventListener('DOMContentLoaded', () => {
         'HHHHHSSSSSSSSHHHHH',
         'HHHHSSSSSSSSSSHHHH',
         'HHHSSSSSSSSSSSSHHH',
-        'HHSSSSSSSSSSSSSSHH',
-        'HHSSSSSSSSSSSSSSHH',
-        'HHSSSSSSSSSSSSSSHH',
-        'HSSSSSSSSSSSSSSSSH',
-        'HSSSSSSSSSSSSSSSSH',
-        'HSSSSSSSSSSSSSSSSH',
-        'HSSSSSSSSnSSSSSSSH',
-        'HSSSSSSSSSSSSSSSSH',
-        'HSSSSSSSSSSSSSSSSH',
-        'HHSSSSSSSSSSSSSSHH',
-        'HHSSSSSSSSSSSSSSHH',
         'HHHSSSSSSSSSSSSHHH',
-        'HHHHHSSSSSSSSHHHHH'
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSnSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHHnSSSSSSSSSSnHHH',
+        'HHHHnSSSSSSSSnHHHH',
+        'HHHHHnSSSSSSnHHHHH',
+        'HHHHHHSSSSSSHHHHHH',
+        '.HHHHHHSSSSHHHHHH.'
     ];
 
     const C = {
@@ -304,7 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (pose.tint > 0) {
             s.globalAlpha = Math.min(1, pose.tint);
-            f(2, 8, 14, 11, pose.tintColor || C.angry);
+            if (who === 'kaajal') f(3, 7, 12, 10, pose.tintColor || C.angry);
+            else f(2, 8, 14, 11, pose.tintColor || C.angry);
             s.globalAlpha = 1;
         }
 
