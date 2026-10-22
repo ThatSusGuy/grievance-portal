@@ -682,7 +682,8 @@ var ADVENTURE_DEFAULT_MODELS = [
 ];
 var ADVENTURE_TIME_BUDGET_MS = 30000; // stop trying more models after this
 
-function adventureSystemPrompt() {
+function adventureSystemPrompt(options) {
+  options = options || {};
   var animationLines = Object.keys(ADVENTURE_ANIMATIONS).map(function (name) {
     return name + ' (' + ADVENTURE_ANIMATIONS[name] + ')';
   }).join(', ');
@@ -693,17 +694,25 @@ function adventureSystemPrompt() {
     'Kaajal is the player. Address her as "you". Ridit is a character in the story: lovable,',
     'lazy, dramatic, easily distracted, always says "five more minutes", and completely',
     'devoted to her even when he is useless. A tiny pixel-art Ridit on screen acts out each turn,',
-    'and a tiny pixel-art Kaajal (long black hair, beige trench coat, silver jhumkas) can join him.',
+    'and a tiny pixel-art Kaajal (long dark hair, black TAM hoodie, silver jhumkas) can join him.',
     '',
     'Running jokes to use naturally (not all at once):',
     '- A Cadbury Bournville (dark chocolate) fixes everything.',
     '- Being sent to sleep on the couch is the ultimate punishment.',
     '- "Where my man at" — Ridit is often missing or on his phone.',
-    '- "The Relationship Agreement": a Sheldon-Cooper-style 32-page legal covenant. Invent',
-    '  silly clause numbers when useful ("a clear violation of Clause 7.3").',
     '- Ridit\'s classic reply to complaints: "I will think about it."',
     '- He calls her "babylove". Kaajal sometimes types Hinglish; understand it, and you may',
     '  sprinkle a little back.',
+    '',
+    'The Relationship Agreement (a Sheldon-Cooper-style 32-page legal covenant between them)',
+    'is a rare treat, not a running joke. Only bring it up when it truly fits the moment: she',
+    'accuses him of breaking a promise, they argue over house rules, a dispute needs settling,',
+    'or she mentions it herself. Then you may cite a silly clause ("a clear violation of',
+    'Clause 7.3"). Never use it as a throwaway gag, in an opening, or just because nothing',
+    'else came to mind. Most stories should not mention it at all.',
+    options.agreementCooldown
+      ? 'It came up recently in this story, so do NOT mention the Agreement or any clause this turn.'
+      : '',
     '',
     'Rules:',
     '- narration: 1 to 3 short sentences, at most 60 words. Second person, present tense.',
@@ -735,6 +744,18 @@ function adventureSystemPrompt() {
     '{"narration": "...", "cast": "...", "speech": "...", "speaker": "...", "animation": "...",',
     ' "kaajal_animation": "...", "location": "...", "suggestions": ["...", "...", "..."]}'
   ].join('\n');
+}
+
+// True when the Relationship Agreement came up in the last few turns and she
+// hasn't asked about it herself, so the narrator should leave it alone
+function agreementCooldown(body) {
+  var mentions = /agreement|clause|covenant/i;
+  if (mentions.test(String(body.input || ''))) return false;
+  var history = Array.isArray(body.history) ? body.history.slice(-ADVENTURE_MAX_TURNS) : [];
+  return history.some(function (turn) {
+    var reply = turn && turn.reply;
+    return !!reply && mentions.test(String(reply.narration || '') + ' ' + String(reply.speech || ''));
+  });
 }
 
 // Builds the model conversation from the client's story history
@@ -776,7 +797,7 @@ function adventureTurn(body) {
   cache.put(rateKey, String(used + 1), 900);
 
   var request = {
-    systemInstruction: { parts: [{ text: adventureSystemPrompt() }] },
+    systemInstruction: { parts: [{ text: adventureSystemPrompt({ agreementCooldown: agreementCooldown(body) }) }] },
     contents: adventureContents(body),
     generationConfig: {
       responseMimeType: 'application/json',
