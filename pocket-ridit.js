@@ -80,18 +80,17 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const HEAD_TOP = -40; // relative to his feet; the chin sits on the collar
 
-    // Kaajal's head, traced from her photos and videos: a round, full face
-    // with soft cheeks, thick dark hair with a centre part that frames her
-    // face and puffs out to her shoulders, straight defined brows, almond
-    // eyes with winged liner, full mauve-pink lips, the mole on her cheek,
-    // and silver jhumkas. Same grid as Ridit's, so expressions line up.
+    // Kaajal's head, from her photos and videos, drawn cute: a round, soft
+    // face, glossy dark hair with a centre part that frames her face and
+    // puffs out to her shoulders, big shiny eyes with lashes and liner,
+    // soft arched brows, a button nose, glossy pink lips and rosy cheeks.
+    // Same grid as Ridit's, so expressions line up.
     const KAAJAL_HEAD = [
         '.....HHHHHHHH.....',
         '...HHHHHHHHHHHH...',
-        '..HHHHHHhhHHHHHH..',
-        '.HHHHHHHhhHHHHHHH.',
-        '.HHHHHHHSSHHHHHHH.',
-        'HHHHHHSSSSSSHHHHHH',
+        '..HHHhhHHHHhhHHH..',
+        '.HHhhHHHSSHHHhhHH.',
+        '.HHHHHHSSSSHHHHHH.',
         'HHHHHSSSSSSSSHHHHH',
         'HHHHSSSSSSSSSSHHHH',
         'HHHSSSSSSSSSSSSHHH',
@@ -100,8 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'HHSSSSSSSSSSSSSSHH',
         'HSSSSSSSSSSSSSSSSH',
         'HSSSSSSSSSSSSSSSSH',
-        'HSSSSSSSnnSSSSSSSH',
-        'HSSSSSSnSSnSSSSSSH',
+        'HSSSSSSSSSSSSSSSSH',
+        'HSSSSSSSSnSSSSSSSH',
+        'HSSSSSSSSSSSSSSSSH',
         'HSSSSSSSSSSSSSSSSH',
         'HHSSSSSSSSSSSSSSHH',
         'HHSSSSSSSSSSSSSSHH',
@@ -126,9 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
             pants: '#cbbda4', pantsShade: '#b3a68e', shoe: '#f4f4f4'
         },
         kaajal: {
-            head: KAAJAL_HEAD, short: 2, sleeve: 0.8, stubble: '#c98a66',
-            skin: '#c98d6a', skinShade: '#a86f52', hair: '#141012', hairLight: '#3b2f30',
-            lip: '#c46876', lipDark: '#94485a', lipLight: '#d98a95', brow: '#2a1a16',
+            head: KAAJAL_HEAD, short: 3, sleeve: 0.8, stubble: '#d39a74',
+            skin: '#d39a74', skinShade: '#c0835f', hair: '#1d1416', hairLight: '#4a3a3e',
+            lip: '#d46a7c', lipDark: '#b04f62', lipLight: '#e8909d', brow: '#4a3029',
             top: '#cdb497', topShade: '#b09878', collar: '#1e1e22',
             pants: '#2a2630', pantsShade: '#1f1c24', shoe: '#f4f4f4'
         }
@@ -238,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // lying down, it fans out over the pillow instead
             p(-10, T + 2, 20, 16, L.hair); p(-9, T, 18, 2, L.hair);
         } else if (who === 'kaajal') {
-            p(-5, T - 1, 10, 1, L.hair);
             p(-10, T + 3, 20, B + 3 - (T + 3), L.hair);
             p(-11, T + 9, 22, B + 2 - (T + 9), L.hair);
             p(-12, T + 14, 24, B + 1 - (T + 14), L.hair);
@@ -310,20 +309,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (who === 'kaajal') {
-            // Straight, defined brows sitting close over her eyes
+            // Soft arched brows
             const brow = L.brow;
             switch (pose.brows) {
                 case 'angry':
-                    f(3, 8, 2, 1, brow); f(5, 9, 2, 1, brow);
-                    f(13, 8, 2, 1, brow); f(11, 9, 2, 1, brow); break;
+                    f(4, 8, 2, 1, brow); f(6, 9, 1, 1, brow);
+                    f(12, 8, 2, 1, brow); f(11, 9, 1, 1, brow); break;
                 case 'sad':
-                    f(3, 9, 2, 1, brow); f(5, 8, 2, 1, brow);
-                    f(11, 8, 2, 1, brow); f(13, 9, 2, 1, brow); break;
+                    f(4, 9, 1, 1, brow); f(5, 8, 2, 1, brow);
+                    f(11, 8, 2, 1, brow); f(13, 9, 1, 1, brow); break;
                 case 'up':
-                    f(3, 8, 4, 1, brow); f(11, 8, 4, 1, brow); break;
+                    f(4, 7, 3, 1, brow); f(3, 8, 1, 1, brow);
+                    f(11, 7, 3, 1, brow); f(14, 8, 1, 1, brow); break;
                 default:
-                    f(3, 9, 4, 1, brow); f(11, 9, 4, 1, brow);
-                    f(2, 10, 1, 1, brow); f(15, 10, 1, 1, brow);
+                    f(4, 8, 3, 1, brow); f(3, 8, 1, 1, '#7a5446');
+                    f(11, 8, 3, 1, brow); f(14, 8, 1, 1, '#7a5446');
             }
         } else {
             // Very thick brows, which carry most of his expressions
@@ -345,13 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Eyes: left eye is columns 4-6, right eye 11-13
         const look = pose.look;
         [4, 11].forEach(ex => {
-            if (who === 'kaajal' && pose.eyes === 'open') {
-                // almond, a little sleepy: lined lid, then dark irises looking
-                // slightly in towards her nose (or wherever she's glancing)
-                f(ex, 12, 3, 1, C.eye);
-                f(ex, 13, 3, 1, C.white);
-                const iris = Math.min(ex + 1, Math.max(ex, ex + (ex === 4 ? 1 : 0) + pose.look));
-                f(iris, 13, 2, 1, '#2b1a14');
+            if (who === 'kaajal' && (pose.eyes === 'open' || pose.eyes === 'sparkle')) {
+                // big shiny eyes: a lash line, a dark iris that lightens
+                // towards the bottom, and a little catchlight
+                f(ex, 11, 3, 1, C.eye);
+                f(ex, 12, 3, 1, '#2b1a14');
+                f(ex, 13, 3, 1, '#5a3626'); f(ex + 1, 13, 1, 1, '#7a4c34');
+                f(ex + (pose.look > 0 ? 2 : pose.look < 0 ? 0 : 1), 12, 1, 1, C.white);
                 return;
             }
             switch (pose.eyes) {
@@ -387,14 +387,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (who === 'kaajal') {
             // winged eyeliner whenever her eyes are open
-            if (['open', 'half', 'wide', 'down', 'sparkle', 'up', 'squint'].includes(pose.eyes)) {
+            // eyelashes flicking out at the corners
+            if (['open', 'half', 'wide', 'down', 'sparkle', 'up', 'squint', 'closed'].includes(pose.eyes)) {
+                f(2, 10, 1, 1, C.eye); f(15, 10, 1, 1, C.eye);
                 f(3, 11, 1, 1, C.eye); f(14, 11, 1, 1, C.eye);
             }
-            // rosy cheeks, the mole on her cheek, and silver jhumkas
-            if (!pose.blush) { f(2, 15, 2, 1, '#d6907c'); f(14, 15, 2, 1, '#d6907c'); }
-            f(5, 15, 1, 1, '#8a573f');
+            // rosy cheeks and little silver jhumkas
+            if (!pose.blush) { f(3, 15, 2, 1, '#eb9a9a'); f(13, 15, 2, 1, '#eb9a9a'); }
             [0, 17].forEach(col => {
-                f(col, 15, 1, 2, C.silver); f(col, 17, 1, 1, '#f4f4f4');
+                f(col, 15, 1, 2, C.silver); f(col, 17, 1, 1, '#ffffff');
             });
         }
 
@@ -405,10 +406,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Full lips: the mouth spans columns 6-11, rows 16-18
         switch (who === 'kaajal' && pose.mouth === 'smile' ? 'kaajalSmile' : pose.mouth) {
             case 'kaajalSmile':
-                // her closed-lip smile: full lips, corners tucked up
+                // her sweet closed-lip smile, glossy pink
                 f(6, 16, 1, 1, L.lipDark); f(11, 16, 1, 1, L.lipDark);
-                f(7, 16, 4, 1, L.lip);
-                f(7, 17, 4, 1, L.lipLight); break;
+                f(7, 17, 4, 1, L.lip); f(8, 18, 2, 1, L.lipLight); break;
             case 'big':
                 f(6, 17, 6, 1, L.lipDark); f(7, 17, 4, 1, C.white); f(7, 18, 4, 1, L.lipDark); break;
             case 'flat':
@@ -1655,6 +1655,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return [scene.cast];
     }
 
+    // Whenever they're both standing, she's always the shorter one: if a
+    // jump or a bob would bring her head up near his, she ducks a little
+    const HEIGHT_GAP = 4;
+    function keepHerShorter(actors) {
+        const him = actors.find(a => a.who === 'ridit');
+        const her = actors.find(a => a.who === 'kaajal');
+        const standing = a => !a.frame.lying && a.frame.pose.legs !== 'sit';
+        if (!him || !her || !standing(him) || !standing(her)) return;
+        const top = a => (a.frame.groundY || GROUND) + (a.frame.jump || 0) + a.frame.pose.bob + LOOKS[a.who].short;
+        const gap = top(her) - top(him);
+        if (gap < HEIGHT_GAP) her.frame.pose.bob += HEIGHT_GAP - gap;
+    }
+
     function drawScene(now) {
         const t = (now - scene.startedAt) / 1000;
         const cast = onScreen();
@@ -1676,6 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return { who, frame };
         });
+        keepHerShorter(actors);
         const roomFrame = actors.find(a => a.frame.room);
         const room = roomFrame ? roomFrame.frame.room : scene.location;
 
