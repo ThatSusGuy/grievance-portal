@@ -80,24 +80,24 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const HEAD_TOP = -40; // relative to his feet; the chin sits on the collar
 
-    // Kaajal's head, traced from her photos: a round, full face, long glossy
-    // black hair parted a little off-centre and swept over to one side, big
-    // dark eyes with winged eyeliner, fine arched brows, a glossy pink
-    // closed-lip smile, the little mole by her nose, a silver bindi and jhumkas.
-    // Same grid as Ridit's, so the eyes and mouth sit in the same places.
+    // Kaajal's head, traced from her photos and videos: a round, full face
+    // with soft cheeks, thick dark hair with a centre part that frames her
+    // face and puffs out to her shoulders, straight defined brows, almond
+    // eyes with winged liner, full mauve-pink lips, the mole on her cheek,
+    // and silver jhumkas. Same grid as Ridit's, so expressions line up.
     const KAAJAL_HEAD = [
-        '....HHHHHHHHHH....',
-        '..HHHHHhhHHHHHHH..',
-        '.HHHHHhHHHHHHHHHH.',
-        '.HHHHhHHHHHHHHHHH.',
-        'HHHHHHSHHHHHHHHHHH',
-        'HHHHHSSSHHHHHHHHHH',
-        'HHHHSSSSSSHHHHHHHH',
-        'HHHSSSSSSSSSSHHHHH',
-        'HHSSSSSSSSSSSSSHHH',
+        '.....HHHHHHHH.....',
+        '...HHHHHHHHHHHH...',
+        '..HHHHHHhhHHHHHH..',
+        '.HHHHHHHhhHHHHHHH.',
+        '.HHHHHHHSSHHHHHHH.',
+        'HHHHHHSSSSSSHHHHHH',
+        'HHHHHSSSSSSSSHHHHH',
+        'HHHHSSSSSSSSSSHHHH',
+        'HHHSSSSSSSSSSSSHHH',
         'HHSSSSSSSSSSSSSSHH',
-        'HSSSSSSSSSSSSSSSSH',
-        'HSSSSSSSSSSSSSSSSH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
         'HSSSSSSSSSSSSSSSSH',
         'HSSSSSSSSSSSSSSSSH',
         'HSSSSSSSnnSSSSSSSH',
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'HHSSSSSSSSSSSSSSHH',
         'HHSSSSSSSSSSSSSSHH',
         'HHHSSSSSSSSSSSSHHH',
-        'HHHHSSSSSSSSSSHHHH'
+        'HHHHHSSSSSSSSHHHHH'
     ];
 
     const C = {
@@ -127,8 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         kaajal: {
             head: KAAJAL_HEAD, short: 2, sleeve: 0.8, stubble: '#c98a66',
-            skin: '#c98a66', skinShade: '#a96c4e', hair: '#121014', hairLight: '#3a3036',
-            lip: '#d36f80', lipDark: '#a54a5c',
+            skin: '#c98d6a', skinShade: '#a86f52', hair: '#141012', hairLight: '#3b2f30',
+            lip: '#c46876', lipDark: '#94485a', lipLight: '#d98a95', brow: '#2a1a16',
             top: '#cdb497', topShade: '#b09878', collar: '#1e1e22',
             pants: '#2a2630', pantsShade: '#1f1c24', shoe: '#f4f4f4'
         }
@@ -233,15 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const B = -19 + up;
         const T = HEAD_TOP + up;
 
-        // Her long hair hangs down behind her shoulders
+        // Her thick hair puffs out around her face and down to her shoulders
         if (who === 'kaajal' && pose.lying) {
             // lying down, it fans out over the pillow instead
             p(-10, T + 2, 20, 16, L.hair); p(-9, T, 18, 2, L.hair);
         } else if (who === 'kaajal') {
-            p(-10, T + 4, 20, B + 6 - (T + 4), L.hair);
-            p(-9, B + 6, 18, 2, L.hair);
-            p(-11, T + 10, 1, B - T - 6, L.hair); p(10, T + 8, 2, B - T - 2, L.hair);
-            p(-10, T + 9, 1, 9, L.hairLight); p(10, T + 12, 1, 8, L.hairLight);
+            p(-5, T - 1, 10, 1, L.hair);
+            p(-10, T + 3, 20, B + 3 - (T + 3), L.hair);
+            p(-11, T + 9, 22, B + 2 - (T + 9), L.hair);
+            p(-12, T + 14, 24, B + 1 - (T + 14), L.hair);
+            p(-13, B - 1, 2, 2, L.hair); p(11, B - 1, 2, 2, L.hair);
+            p(-11, T + 10, 1, 9, L.hairLight); p(10, T + 12, 1, 8, L.hairLight);
         }
 
         // Legs (trousers) and white shoes
@@ -273,10 +275,9 @@ document.addEventListener('DOMContentLoaded', () => {
             p(-3, B, 1, 4, L.topShade); p(2, B, 1, 4, L.topShade);
             p(-6, B + 7, 12, 1, L.topShade);
             if (legs !== 'sit') { p(-6, B + 11, 12, 2, L.top); p(-1, B + 11, 1, 2, L.topShade); }
-            // and her hair falls in front of her shoulders
-            p(-6, B - 1, 2, 4, L.hair);
-            p(3, B - 1, 4, 6, L.hair); p(4, B + 5, 3, 3, L.hair); p(5, B + 8, 2, 1, L.hair);
-            p(5, B + 1, 1, 5, L.hairLight);
+            // and her hair falls just over her shoulders
+            p(-7, B - 1, 3, 3, L.hair); p(-7, B + 2, 2, 1, L.hair);
+            p(4, B - 1, 3, 3, L.hair); p(5, B + 2, 2, 1, L.hair);
         } else {
             p(-3, B, 6, 1, L.collar);
         }
@@ -309,21 +310,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (who === 'kaajal') {
-            // Fine arched brows
-            const brow = '#3b2824';
+            // Straight, defined brows sitting close over her eyes
+            const brow = L.brow;
             switch (pose.brows) {
                 case 'angry':
-                    f(3, 9, 2, 1, brow); f(5, 10, 2, 1, brow);
-                    f(13, 9, 2, 1, brow); f(11, 10, 2, 1, brow); break;
+                    f(3, 8, 2, 1, brow); f(5, 9, 2, 1, brow);
+                    f(13, 8, 2, 1, brow); f(11, 9, 2, 1, brow); break;
                 case 'sad':
-                    f(3, 10, 2, 1, brow); f(5, 9, 2, 1, brow);
-                    f(11, 9, 2, 1, brow); f(13, 10, 2, 1, brow); break;
+                    f(3, 9, 2, 1, brow); f(5, 8, 2, 1, brow);
+                    f(11, 8, 2, 1, brow); f(13, 9, 2, 1, brow); break;
                 case 'up':
-                    f(4, 8, 3, 1, brow); f(3, 9, 1, 1, brow);
-                    f(11, 8, 3, 1, brow); f(14, 9, 1, 1, brow); break;
+                    f(3, 8, 4, 1, brow); f(11, 8, 4, 1, brow); break;
                 default:
-                    f(4, 9, 3, 1, brow); f(3, 10, 1, 1, brow);
-                    f(11, 9, 3, 1, brow); f(14, 10, 1, 1, brow);
+                    f(3, 9, 4, 1, brow); f(11, 9, 4, 1, brow);
+                    f(2, 10, 1, 1, brow); f(15, 10, 1, 1, brow);
             }
         } else {
             // Very thick brows, which carry most of his expressions
@@ -346,10 +346,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const look = pose.look;
         [4, 11].forEach(ex => {
             if (who === 'kaajal' && pose.eyes === 'open') {
-                // her big dark eyes: liner on top, a catchlight, a little wing
-                f(ex, 11, 3, 1, C.eye);
-                f(ex, 12, 3, 2, '#2b1a14');
-                f(ex + 1 + Math.min(1, Math.max(-1, pose.look)), 12, 1, 1, C.white);
+                // almond, a little sleepy: lined lid, then dark irises looking
+                // slightly in towards her nose (or wherever she's glancing)
+                f(ex, 12, 3, 1, C.eye);
+                f(ex, 13, 3, 1, C.white);
+                const iris = Math.min(ex + 1, Math.max(ex, ex + (ex === 4 ? 1 : 0) + pose.look));
+                f(iris, 13, 2, 1, '#2b1a14');
                 return;
             }
             switch (pose.eyes) {
@@ -388,11 +390,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (['open', 'half', 'wide', 'down', 'sparkle', 'up', 'squint'].includes(pose.eyes)) {
                 f(3, 11, 1, 1, C.eye); f(14, 11, 1, 1, C.eye);
             }
-            // rosy cheeks, silver bindi and jhumkas
-            if (!pose.blush) { f(3, 15, 2, 1, '#d98e7c'); f(13, 15, 2, 1, '#d98e7c'); }
-            f(8, 10, 1, 1, C.silver);
+            // rosy cheeks, the mole on her cheek, and silver jhumkas
+            if (!pose.blush) { f(2, 15, 2, 1, '#d6907c'); f(14, 15, 2, 1, '#d6907c'); }
+            f(5, 15, 1, 1, '#8a573f');
             [0, 17].forEach(col => {
-                f(col, 15, 1, 3, C.silver); f(col, 18, 1, 1, '#f4f4f4');
+                f(col, 15, 1, 2, C.silver); f(col, 17, 1, 1, '#f4f4f4');
             });
         }
 
@@ -403,9 +405,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Full lips: the mouth spans columns 6-11, rows 16-18
         switch (who === 'kaajal' && pose.mouth === 'smile' ? 'kaajalSmile' : pose.mouth) {
             case 'kaajalSmile':
-                // her soft closed-lip smile, glossy pink
+                // her closed-lip smile: full lips, corners tucked up
                 f(6, 16, 1, 1, L.lipDark); f(11, 16, 1, 1, L.lipDark);
-                f(7, 17, 4, 1, L.lip); f(8, 17, 1, 1, '#eba0ac'); break;
+                f(7, 16, 4, 1, L.lip);
+                f(7, 17, 4, 1, L.lipLight); break;
             case 'big':
                 f(6, 17, 6, 1, L.lipDark); f(7, 17, 4, 1, C.white); f(7, 18, 4, 1, L.lipDark); break;
             case 'flat':
@@ -1628,7 +1631,7 @@ document.addEventListener('DOMContentLoaded', () => {
         poke: { who: null, until: 0 }
     };
     const sprites = { ridit: makeSprite(), kaajal: makeSprite() };
-    const PAIR_GAP = 11; // how far each of them steps aside when both are on screen
+    const PAIR_GAP = 12; // how far each of them steps aside when both are on screen
     let frameHandle = null;
     let lastFrame = 0;
     let heads = { ridit: HOME_X.bedroom, kaajal: HOME_X.bedroom };
