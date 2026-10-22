@@ -39,13 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    // Ridit is drawn upright onto his own little canvas, then stamped onto
-    // the scene (rotated 90° when lying down, which keeps pixels crisp)
-    const sprite = document.createElement('canvas');
-    sprite.width = 40;
-    sprite.height = 50;
-    const sctx = sprite.getContext('2d');
-    const SOX = 20, SOY = 48; // sprite origin: between his feet
+    // Each person is drawn upright onto their own little canvas, then stamped
+    // onto the scene (rotated 90° when lying down, which keeps pixels crisp)
+    function makeSprite() {
+        const c = document.createElement('canvas');
+        c.width = 40;
+        c.height = 50;
+        return c;
+    }
+    const SOX = 20, SOY = 48; // sprite origin: between the feet
 
     // Ridit's head, traced from his photos: messy near-black hair with a
     // fringe swept across his forehead, very thick brows, ears tucked under
@@ -78,14 +80,58 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const HEAD_TOP = -40; // relative to his feet; the chin sits on the collar
 
+    // Kaajal's head, traced from her photos: a round, full face, long glossy
+    // black hair parted a little off-centre and swept over to one side, big
+    // dark eyes with winged eyeliner, fine arched brows, a glossy pink
+    // closed-lip smile, the little mole by her nose, a silver bindi and jhumkas.
+    // Same grid as Ridit's, so the eyes and mouth sit in the same places.
+    const KAAJAL_HEAD = [
+        '....HHHHHHHHHH....',
+        '..HHHHHhhHHHHHHH..',
+        '.HHHHHhHHHHHHHHHH.',
+        '.HHHHhHHHHHHHHHHH.',
+        'HHHHHHSHHHHHHHHHHH',
+        'HHHHHSSSHHHHHHHHHH',
+        'HHHHSSSSSSHHHHHHHH',
+        'HHHSSSSSSSSSSHHHHH',
+        'HHSSSSSSSSSSSSSHHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HSSSSSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSSSSSH',
+        'HSSSSSSSnnSSSSSSSH',
+        'HSSSSSSnSSnSSSSSSH',
+        'HSSSSSSSSSSSSSSSSH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHSSSSSSSSSSSSSSHH',
+        'HHHSSSSSSSSSSSSHHH',
+        'HHHHSSSSSSSSSSHHHH'
+    ];
+
     const C = {
-        skin: '#c28763', skinShade: '#a46c4c', hair: '#151112', hairLight: '#2e2523',
-        stubble: '#94664c', lip: '#b06a72', lipDark: '#7a3f45',
-        hoodie: '#1e1e22', hoodieShade: '#141417', collar: '#2c2c32',
-        pants: '#cbbda4', pantsShade: '#b3a68e',
-        shoe: '#f4f4f4', eye: '#1a1210', white: '#f4ece4',
+        eye: '#1a1210', white: '#f4ece4',
         blush: '#ef7f9c', heart: '#e8344e', angry: '#d9483b',
-        wrapper: '#4b1f5c', gold: '#d4a63a', choc: '#5a3420'
+        wrapper: '#4b1f5c', gold: '#d4a63a', choc: '#5a3420', silver: '#c9d1d8'
+    };
+
+    // How each of them looks. Ridit: black tee, beige trousers, white shoes.
+    // Kaajal: her beige trench coat over a black top, black trousers.
+    const LOOKS = {
+        ridit: {
+            head: HEAD, short: 0, sleeve: 0.35, stubble: '#94664c',
+            skin: '#c28763', skinShade: '#a46c4c', hair: '#151112', hairLight: '#2e2523',
+            lip: '#b06a72', lipDark: '#7a3f45',
+            top: '#1e1e22', topShade: '#141417', collar: '#2c2c32',
+            pants: '#cbbda4', pantsShade: '#b3a68e', shoe: '#f4f4f4'
+        },
+        kaajal: {
+            head: KAAJAL_HEAD, short: 2, sleeve: 0.8, stubble: '#c98a66',
+            skin: '#c98a66', skinShade: '#a96c4e', hair: '#121014', hairLight: '#3a3036',
+            lip: '#d36f80', lipDark: '#a54a5c',
+            top: '#cdb497', topShade: '#b09878', collar: '#1e1e22',
+            pants: '#2a2630', pantsShade: '#1f1c24', shoe: '#f4f4f4'
+        }
     };
 
     const GLYPHS = {
@@ -177,53 +223,80 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function drawRidit(pose) {
-        const s = sctx;
+    function drawPerson(sprite, who, pose) {
+        const L = LOOKS[who];
+        const s = sprite.getContext('2d');
         s.clearRect(0, 0, sprite.width, sprite.height);
-        const up = pose.bob + (pose.legs === 'sit' ? 4 : 0);
+        // Kaajal is a little shorter: everything above her legs sits lower
+        const up = pose.bob + (pose.legs === 'sit' ? 4 : 0) + L.short;
         const p = (x, y, w, h, color) => rect(s, SOX + x, SOY + y, w, h, color);
+        const B = -19 + up;
+        const T = HEAD_TOP + up;
 
-        // Legs (beige trousers) and white shoes
+        // Her long hair hangs down behind her shoulders
+        if (who === 'kaajal' && pose.lying) {
+            // lying down, it fans out over the pillow instead
+            p(-10, T + 2, 20, 16, L.hair); p(-9, T, 18, 2, L.hair);
+        } else if (who === 'kaajal') {
+            p(-10, T + 4, 20, B + 6 - (T + 4), L.hair);
+            p(-9, B + 6, 18, 2, L.hair);
+            p(-11, T + 10, 1, B - T - 6, L.hair); p(10, T + 8, 2, B - T - 2, L.hair);
+            p(-10, T + 9, 1, 9, L.hairLight); p(10, T + 12, 1, 8, L.hairLight);
+        }
+
+        // Legs (trousers) and white shoes
         const legs = pose.legs;
         if (legs === 'sit') {
-            p(-5, -4, 4, 3, C.pants); p(1, -4, 4, 3, C.pants);
-            p(-6, -1, 5, 1, C.shoe); p(1, -1, 5, 1, C.shoe);
+            p(-5, -4, 4, 3, L.pants); p(1, -4, 4, 3, L.pants);
+            p(-6, -1, 5, 1, L.shoe); p(1, -1, 5, 1, L.shoe);
         } else {
+            const top = -8 + L.short, len = 7 - L.short;
             const liftL = legs === 'walkA' ? 1 : legs === 'runA' ? 3 : 0;
             const liftR = legs === 'walkB' ? 1 : legs === 'runB' ? 3 : 0;
-            p(-5, -8, 4, 7 - liftL, C.pants);
-            p(1, -8, 4, 7 - liftR, C.pants);
-            p(-2, -8, 1, 7 - liftL, C.pantsShade); p(4, -8, 1, 7 - liftR, C.pantsShade);
+            p(-5, top, 4, len - liftL, L.pants);
+            p(1, top, 4, len - liftR, L.pants);
+            p(-2, top, 1, len - liftL, L.pantsShade); p(4, top, 1, len - liftR, L.pantsShade);
             if (legs === 'tiptoe') {
-                p(-4, -1 - liftL, 3, 1, C.shoe); p(2, -1 - liftR, 3, 1, C.shoe);
+                p(-4, -1 - liftL, 3, 1, L.shoe); p(2, -1 - liftR, 3, 1, L.shoe);
             } else {
-                p(-6, -1 - liftL, 5, 1, C.shoe); p(1, -1 - liftR, 5, 1, C.shoe);
+                p(-6, -1 - liftL, 5, 1, L.shoe); p(1, -1 - liftR, 5, 1, L.shoe);
             }
         }
 
-        // Black tee
-        const B = -19 + up;
-        p(-6, B, 12, 11, C.hoodie);
-        p(-6, B + 10, 12, 1, C.hoodieShade);
-        p(-3, B, 6, 1, C.collar);
+        // Body: his black tee, or her trench coat
+        p(-6, B, 12, 11, L.top);
+        p(-6, B + 10, 12, 1, L.topShade);
+        if (who === 'kaajal') {
+            // black top and gold chain in the open collar, lapels, belt, and
+            // the coat's skirt over the top of her legs
+            p(-2, B, 4, 1, L.collar); p(-1, B + 1, 2, 2, L.collar); p(-1, B + 2, 2, 1, C.gold);
+            p(-3, B, 1, 4, L.topShade); p(2, B, 1, 4, L.topShade);
+            p(-6, B + 7, 12, 1, L.topShade);
+            if (legs !== 'sit') { p(-6, B + 11, 12, 2, L.top); p(-1, B + 11, 1, 2, L.topShade); }
+            // and her hair falls in front of her shoulders
+            p(-6, B - 1, 2, 4, L.hair);
+            p(3, B - 1, 4, 6, L.hair); p(4, B + 5, 3, 3, L.hair); p(5, B + 8, 2, 1, L.hair);
+            p(5, B + 1, 1, 5, L.hairLight);
+        } else {
+            p(-3, B, 6, 1, L.collar);
+        }
 
-        // Arms: a short black sleeve, then bare arm down to the hand
+        // Arms: a sleeve, then bare arm down to the hand
         const hands = HANDS[pose.arms] || HANDS.down;
         [[-7, hands[0]], [6, hands[1]]].forEach(([sx, hand]) => {
             const sy = B + 1, hx = hand[0], hy = hand[1] + up;
             const steps = Math.max(Math.abs(hx - sx), Math.abs(hy - sy), 1);
             for (let i = 0; i < steps; i++) {
-                const color = i < Math.max(2, steps * 0.35) ? C.hoodie : C.skin;
+                const color = i < Math.max(2, steps * L.sleeve) ? L.top : L.skin;
                 p(sx + Math.round((hx - sx) * i / steps), sy + Math.round((hy - sy) * i / steps), 2, 2, color);
             }
-            p(hx, hy, 2, 2, C.skin);
+            p(hx, hy, 2, 2, L.skin);
         });
 
         // Head
-        const T = HEAD_TOP + up;
         const f = (col, row, w, h, color) => p(col - 9, T + row, w, h, color);
-        const HEAD_COLORS = { H: C.hair, h: C.hairLight, S: C.skin, n: C.skinShade, E: C.skinShade, B: C.stubble };
-        HEAD.forEach((row, r) => {
+        const HEAD_COLORS = { H: L.hair, h: L.hairLight, S: L.skin, n: L.skinShade, E: L.skinShade, B: L.stubble };
+        L.head.forEach((row, r) => {
             for (let col = 0; col < row.length; col++) {
                 if (row[col] !== '.') f(col, r, 1, 1, HEAD_COLORS[row[col]]);
             }
@@ -235,29 +308,55 @@ document.addEventListener('DOMContentLoaded', () => {
             s.globalAlpha = 1;
         }
 
-        // Very thick brows, which carry most of his expressions
-        switch (pose.brows) {
-            case 'angry':
-                f(3, 9, 2, 1, C.hair); f(5, 10, 2, 1, C.hair); f(7, 11, 1, 1, C.hair);
-                f(13, 9, 2, 1, C.hair); f(11, 10, 2, 1, C.hair); f(10, 11, 1, 1, C.hair); break;
-            case 'sad':
-                f(3, 10, 2, 1, C.hair); f(5, 9, 3, 1, C.hair);
-                f(10, 9, 3, 1, C.hair); f(13, 10, 2, 1, C.hair); break;
-            case 'up':
-                f(3, 8, 5, 2, C.hair); f(10, 8, 5, 2, C.hair); break;
-            default:
-                f(4, 9, 3, 1, C.hair); f(3, 10, 5, 1, C.hair);
-                f(11, 9, 3, 1, C.hair); f(10, 10, 5, 1, C.hair);
+        if (who === 'kaajal') {
+            // Fine arched brows
+            const brow = '#3b2824';
+            switch (pose.brows) {
+                case 'angry':
+                    f(3, 9, 2, 1, brow); f(5, 10, 2, 1, brow);
+                    f(13, 9, 2, 1, brow); f(11, 10, 2, 1, brow); break;
+                case 'sad':
+                    f(3, 10, 2, 1, brow); f(5, 9, 2, 1, brow);
+                    f(11, 9, 2, 1, brow); f(13, 10, 2, 1, brow); break;
+                case 'up':
+                    f(4, 8, 3, 1, brow); f(3, 9, 1, 1, brow);
+                    f(11, 8, 3, 1, brow); f(14, 9, 1, 1, brow); break;
+                default:
+                    f(4, 9, 3, 1, brow); f(3, 10, 1, 1, brow);
+                    f(11, 9, 3, 1, brow); f(14, 10, 1, 1, brow);
+            }
+        } else {
+            // Very thick brows, which carry most of his expressions
+            switch (pose.brows) {
+                case 'angry':
+                    f(3, 9, 2, 1, L.hair); f(5, 10, 2, 1, L.hair); f(7, 11, 1, 1, L.hair);
+                    f(13, 9, 2, 1, L.hair); f(11, 10, 2, 1, L.hair); f(10, 11, 1, 1, L.hair); break;
+                case 'sad':
+                    f(3, 10, 2, 1, L.hair); f(5, 9, 3, 1, L.hair);
+                    f(10, 9, 3, 1, L.hair); f(13, 10, 2, 1, L.hair); break;
+                case 'up':
+                    f(3, 8, 5, 2, L.hair); f(10, 8, 5, 2, L.hair); break;
+                default:
+                    f(4, 9, 3, 1, L.hair); f(3, 10, 5, 1, L.hair);
+                    f(11, 9, 3, 1, L.hair); f(10, 10, 5, 1, L.hair);
+            }
         }
 
         // Eyes: left eye is columns 4-6, right eye 11-13
         const look = pose.look;
         [4, 11].forEach(ex => {
+            if (who === 'kaajal' && pose.eyes === 'open') {
+                // her big dark eyes: liner on top, a catchlight, a little wing
+                f(ex, 11, 3, 1, C.eye);
+                f(ex, 12, 3, 2, '#2b1a14');
+                f(ex + 1 + Math.min(1, Math.max(-1, pose.look)), 12, 1, 1, C.white);
+                return;
+            }
             switch (pose.eyes) {
                 case 'closed':
                     f(ex, 13, 3, 1, C.eye); break;
                 case 'half':
-                    f(ex, 12, 3, 1, C.skinShade); f(ex, 13, 3, 1, C.eye); break;
+                    f(ex, 12, 3, 1, L.skinShade); f(ex, 13, 3, 1, C.eye); break;
                 case 'happy':
                     f(ex, 13, 1, 1, C.eye); f(ex + 1, 12, 1, 1, C.eye); f(ex + 2, 13, 1, 1, C.eye); break;
                 case 'heart':
@@ -284,37 +383,54 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        if (who === 'kaajal') {
+            // winged eyeliner whenever her eyes are open
+            if (['open', 'half', 'wide', 'down', 'sparkle', 'up', 'squint'].includes(pose.eyes)) {
+                f(3, 11, 1, 1, C.eye); f(14, 11, 1, 1, C.eye);
+            }
+            // rosy cheeks, silver bindi and jhumkas
+            if (!pose.blush) { f(3, 15, 2, 1, '#d98e7c'); f(13, 15, 2, 1, '#d98e7c'); }
+            f(8, 10, 1, 1, C.silver);
+            [0, 17].forEach(col => {
+                f(col, 15, 1, 3, C.silver); f(col, 18, 1, 1, '#f4f4f4');
+            });
+        }
+
         if (pose.blush) {
             f(3, 14, 2, 1, C.blush); f(13, 14, 2, 1, C.blush);
         }
 
         // Full lips: the mouth spans columns 6-11, rows 16-18
-        switch (pose.mouth) {
+        switch (who === 'kaajal' && pose.mouth === 'smile' ? 'kaajalSmile' : pose.mouth) {
+            case 'kaajalSmile':
+                // her soft closed-lip smile, glossy pink
+                f(6, 16, 1, 1, L.lipDark); f(11, 16, 1, 1, L.lipDark);
+                f(7, 17, 4, 1, L.lip); f(8, 17, 1, 1, '#eba0ac'); break;
             case 'big':
-                f(6, 17, 6, 1, C.lipDark); f(7, 17, 4, 1, C.white); f(7, 18, 4, 1, C.lipDark); break;
+                f(6, 17, 6, 1, L.lipDark); f(7, 17, 4, 1, C.white); f(7, 18, 4, 1, L.lipDark); break;
             case 'flat':
-                f(7, 17, 4, 1, C.lipDark); f(8, 18, 2, 1, C.lip); break;
+                f(7, 17, 4, 1, L.lipDark); f(8, 18, 2, 1, L.lip); break;
             case 'frown':
-                f(7, 17, 4, 1, C.lipDark); f(6, 18, 1, 1, C.lipDark); f(11, 18, 1, 1, C.lipDark);
-                f(7, 18, 4, 1, C.lip); break;
+                f(7, 17, 4, 1, L.lipDark); f(6, 18, 1, 1, L.lipDark); f(11, 18, 1, 1, L.lipDark);
+                f(7, 18, 4, 1, L.lip); break;
             case 'o':
-                f(7, 17, 4, 2, C.lip); f(8, 17, 2, 2, C.lipDark); break;
+                f(7, 17, 4, 2, L.lip); f(8, 17, 2, 2, L.lipDark); break;
             case 'open':
-                f(7, 17, 4, 2, C.lipDark); f(7, 18, 4, 1, C.lip); break;
+                f(7, 17, 4, 2, L.lipDark); f(7, 18, 4, 1, L.lip); break;
             case 'chew':
-                f(7, 17, 4, 1, C.lip); f(7, 18, 4, 1, C.lipDark); break;
+                f(7, 17, 4, 1, L.lip); f(7, 18, 4, 1, L.lipDark); break;
             case 'wavy':
-                f(7, 17, 1, 1, C.lipDark); f(8, 18, 1, 1, C.lipDark);
-                f(9, 17, 1, 1, C.lipDark); f(10, 18, 1, 1, C.lipDark); break;
+                f(7, 17, 1, 1, L.lipDark); f(8, 18, 1, 1, L.lipDark);
+                f(9, 17, 1, 1, L.lipDark); f(10, 18, 1, 1, L.lipDark); break;
             case 'jaw':
-                f(7, 16, 4, 4, C.lipDark); f(8, 17, 2, 2, '#3a1d20'); break;
+                f(7, 16, 4, 4, L.lipDark); f(8, 17, 2, 2, '#3a1d20'); break;
             case 'pout':
                 // the kissy face
-                f(7, 16, 4, 3, C.lip); f(8, 17, 2, 1, C.lipDark); break;
+                f(7, 16, 4, 3, L.lip); f(8, 17, 2, 1, L.lipDark); break;
             default:
                 // his easy smile with a full lower lip
-                f(6, 16, 1, 1, C.lipDark); f(11, 16, 1, 1, C.lipDark);
-                f(7, 17, 4, 1, C.lipDark); f(7, 18, 4, 1, C.lip);
+                f(6, 16, 1, 1, L.lipDark); f(11, 16, 1, 1, L.lipDark);
+                f(7, 17, 4, 1, L.lipDark); f(7, 18, 4, 1, L.lip);
         }
 
         // Things he's holding
@@ -330,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'phone':
                 p(-2, -19 + up, 4, 5, '#333');
                 p(-1, -18 + up, 2, 3, pose.screenOn ? '#8fe3ff' : '#4d7f99');
-                p(-3, -15 + up, 2, 2, C.skin); p(1, -15 + up, 2, 2, C.skin);
+                p(-3, -15 + up, 2, 2, L.skin); p(1, -15 + up, 2, 2, L.skin);
                 break;
             case 'toothbrush':
                 p(rx - 3, ry, 5, 1, '#4aa3ff'); p(rx - 4, ry - 1, 2, 1, C.white);
@@ -386,10 +502,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'selfie':
                 p(rx, ry - 4, 3, 5, '#333'); p(rx + 1, ry - 3, 1, 1, '#8fe3ff');
-                p(hands[0][0], hands[0][1] + up - 2, 1, 2, C.skin); p(hands[0][0] + 2, hands[0][1] + up - 2, 1, 2, C.skin);
+                p(hands[0][0], hands[0][1] + up - 2, 1, 2, L.skin); p(hands[0][0] + 2, hands[0][1] + up - 2, 1, 2, L.skin);
                 break;
             case 'muscle':
-                p(-12, -25 + up, 3, 3, C.skin); p(9, -25 + up, 3, 3, C.skin);
+                p(-12, -25 + up, 3, 3, L.skin); p(9, -25 + up, 3, 3, L.skin);
                 break;
         }
     }
@@ -438,10 +554,11 @@ document.addEventListener('DOMContentLoaded', () => {
             rect(ctx, 58, 62, 11, 12, '#a8714d'); rect(ctx, 59, 66, 9, 1, '#8a5a3c');
             rect(ctx, 62, 56, 2, 6, '#8a5a3c'); rect(ctx, 59, 51, 8, 5, '#ffd36b');
         },
-        bedroomFront() {
-            // the blanket goes over whoever is in bed
-            rect(ctx, 28, 61, 28, 8, '#e86a9a');
-            rect(ctx, 28, 61, 28, 2, '#f39bbd');
+        bedroomFront(t, both) {
+            // the blanket goes over whoever is in bed (pulled up higher for two)
+            const top = both ? 40 : 61;
+            rect(ctx, 28, top, 28, 69 - top, '#e86a9a');
+            rect(ctx, 28, top, 28, 2, '#f39bbd');
         },
 
         kitchen(t) {
@@ -1499,78 +1616,139 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---- Scene loop -----------------------------------------------------
 
+    // cast: who is on screen. Every story opens on Ridit alone; Kaajal
+    // joins him (or carries on solo) once the story brings her in.
+    const CASTS = ['ridit', 'both', 'kaajal'];
     const scene = {
         animation: 'sleeping',
+        kaajalAnimation: 'idle',
+        cast: 'ridit',
         location: 'bedroom',
         startedAt: performance.now(),
-        pokeUntil: 0
+        poke: { who: null, until: 0 }
     };
+    const sprites = { ridit: makeSprite(), kaajal: makeSprite() };
+    const PAIR_GAP = 11; // how far each of them steps aside when both are on screen
     let frameHandle = null;
     let lastFrame = 0;
-    let headX = HOME_X.bedroom;
+    let heads = { ridit: HOME_X.bedroom, kaajal: HOME_X.bedroom };
+    let speaker = 'ridit';
 
-    function setAnimation(name, location) {
+    function setAnimation(name, location, cast, kaajalName) {
         const anim = ANIMATIONS.includes(name) ? name : 'idle';
+        const kAnim = ANIMATIONS.includes(kaajalName) ? kaajalName : 'idle';
+        const who = CASTS.includes(cast) ? cast : 'ridit';
         const loc = LOCATIONS.includes(location) ? location : scene.location;
-        if (anim !== scene.animation || loc !== scene.location) scene.startedAt = performance.now();
+        if (anim !== scene.animation || kAnim !== scene.kaajalAnimation ||
+            who !== scene.cast || loc !== scene.location) scene.startedAt = performance.now();
         scene.animation = anim;
+        scene.kaajalAnimation = kAnim;
+        scene.cast = who;
         scene.location = loc;
+    }
+
+    function onScreen() {
+        if (scene.cast === 'both') return ['ridit', 'kaajal'];
+        return [scene.cast];
     }
 
     function drawScene(now) {
         const t = (now - scene.startedAt) / 1000;
-        const poking = now < scene.pokeUntil;
-        const frame = poking
-            ? ANIMS.poke(1 - (scene.pokeUntil - now) / 700, scene.location)
-            : ANIMS[scene.animation](t, scene.location);
-        const room = frame.room || scene.location;
+        const cast = onScreen();
+        const actors = cast.map(who => {
+            const poking = scene.poke.who === who && now < scene.poke.until;
+            const anim = who === 'kaajal' ? scene.kaajalAnimation : scene.animation;
+            const frame = poking
+                ? ANIMS.poke(1 - (scene.poke.until - now) / 700, scene.location)
+                : ANIMS[anim](t, scene.location);
+            if (cast.length === 2) {
+                // side by side: him on the left, her on the right
+                const side = who === 'kaajal' ? 1 : -1;
+                if (frame.lying) {
+                    // in bed (or on the floor) she lies just behind him
+                    if (who === 'kaajal') frame.lying = Object.assign({}, frame.lying, { y: frame.lying.y - 13 });
+                } else {
+                    frame.x += side * PAIR_GAP;
+                }
+            }
+            return { who, frame };
+        });
+        const roomFrame = actors.find(a => a.frame.room);
+        const room = roomFrame ? roomFrame.frame.room : scene.location;
 
         ctx.clearRect(0, 0, W, H);
         ROOMS[room](now / 1000);
 
-        drawRidit(frame.pose);
-        let hx, hy;
-        if (frame.lying) {
-            const { x, y } = frame.lying;
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(-Math.PI / 2);
-            ctx.drawImage(sprite, -SOX, -SOY);
-            ctx.restore();
-            if (frame.lying.onBed) ROOMS.bedroomFront();
-            hx = x - 30;
-            hy = y - 11;
-        } else {
-            const gy = (frame.groundY || GROUND) + (frame.jump || 0);
-            const up = frame.pose.bob + (frame.pose.legs === 'sit' ? 4 : 0);
-            if (frame.flip) {
+        // whoever's lying down goes first (her behind him), then whoever's standing
+        const order = actors.slice().sort((a, b) =>
+            (b.frame.lying ? 1 : 0) - (a.frame.lying ? 1 : 0) || (a.who === 'kaajal' ? -1 : 1));
+        const fronts = [];
+        order.forEach(({ who, frame }, i) => {
+            const sprite = sprites[who];
+            const short = LOOKS[who].short;
+            frame.pose.lying = !!frame.lying;
+            drawPerson(sprite, who, frame.pose);
+            let hx, hy;
+            if (frame.lying) {
+                const { x, y } = frame.lying;
                 ctx.save();
-                ctx.translate(frame.x, 0);
-                ctx.scale(-1, 1);
-                ctx.drawImage(sprite, -SOX, gy - SOY);
+                ctx.translate(x, y);
+                ctx.rotate(-Math.PI / 2);
+                ctx.drawImage(sprite, -SOX, -SOY);
                 ctx.restore();
+                // the blanket goes on once everyone in bed is in it
+                const next = order[i + 1];
+                if (frame.lying.onBed && !(next && next.frame.lying && next.frame.lying.onBed)) {
+                    ROOMS.bedroomFront(now / 1000, order.filter(a => a.frame.lying && a.frame.lying.onBed).length > 1);
+                }
+                hx = x - 30 + short;
+                hy = y - 11;
             } else {
-                ctx.drawImage(sprite, frame.x - SOX, gy - SOY);
+                const gy = (frame.groundY || GROUND) + (frame.jump || 0);
+                const up = frame.pose.bob + (frame.pose.legs === 'sit' ? 4 : 0) + short;
+                if (frame.flip) {
+                    ctx.save();
+                    ctx.translate(frame.x, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(sprite, -SOX, gy - SOY);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(sprite, frame.x - SOX, gy - SOY);
+                }
+                hx = frame.x;
+                hy = gy - 40 + up;
             }
-            hx = frame.x;
-            hy = gy - 40 + up;
-        }
 
-        if (frame.front === 'box') {
-            // a cardboard box he's hiding in, peeking over the top
-            const gy = frame.groundY || GROUND;
-            rect(ctx, frame.x - 12, gy - 25, 24, 26, '#c8955a');
-            rect(ctx, frame.x - 12, gy - 25, 24, 2, '#a8763e');
-            rect(ctx, frame.x - 2, gy - 25, 4, 12, '#e3c08a');
-            rect(ctx, frame.x - 9, gy - 12, 8, 1, '#8a5a2e'); rect(ctx, frame.x - 9, gy - 10, 5, 1, '#8a5a2e');
-        } else if (frame.front) {
-            ROOMS[frame.front](now / 1000);
-        }
+            if (frame.front === 'box') {
+                // a cardboard box they're hiding in, peeking over the top
+                const gy = frame.groundY || GROUND;
+                rect(ctx, frame.x - 12, gy - 25, 24, 26, '#c8955a');
+                rect(ctx, frame.x - 12, gy - 25, 24, 2, '#a8763e');
+                rect(ctx, frame.x - 2, gy - 25, 4, 12, '#e3c08a');
+                rect(ctx, frame.x - 9, gy - 12, 8, 1, '#8a5a2e'); rect(ctx, frame.x - 9, gy - 10, 5, 1, '#8a5a2e');
+            } else if (frame.front) {
+                // a shared front (the shower curtain, the sea) goes over both of them
+                const next = order[i + 1];
+                if (!(next && next.frame.front === frame.front)) ROOMS[frame.front](now / 1000);
+            }
+            fronts.push({ fx: frame.fx || [], hx, hy });
+            heads[who] = hx;
+        });
 
-        (frame.fx || []).forEach(name => drawEffect(name, now / 1000, hx, hy));
-        headX = hx;
+        // effects go on top of everything; scene-wide ones only once
+        const drawn = new Set();
+        fronts.forEach(({ fx, hx, hy }) => fx.forEach(name => {
+            if (SCENE_FX.includes(name)) {
+                if (drawn.has(name)) return;
+                drawn.add(name);
+            }
+            drawEffect(name, now / 1000, hx, hy);
+        }));
         placeSpeech();
     }
+
+    // effects that fill the whole scene rather than following someone's head
+    const SCENE_FX = ['water', 'snow', 'flash'];
 
     function loop(now) {
         frameHandle = requestAnimationFrame(loop);
@@ -1592,21 +1770,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let speechTimer = null;
 
-    // Centre the bubble over his head, but keep it inside the stage
+    // Centre the bubble over whoever's talking, but keep it inside the stage
     function placeSpeech() {
         if (speechEl.style.display === 'none') return;
         const stageW = canvas.clientWidth;
         const half = speechEl.offsetWidth / 2;
-        const x = (headX / W) * stageW;
+        const who = onScreen().includes(speaker) ? speaker : onScreen()[0];
+        const x = (heads[who] / W) * stageW;
         speechEl.style.left = Math.min(stageW - half - 6, Math.max(half + 6, x)) + 'px';
     }
 
-    function say(text, ms) {
+    function say(text, ms, who) {
         clearTimeout(speechTimer);
         if (!text) {
             speechEl.style.display = 'none';
             return;
         }
+        speaker = who === 'kaajal' ? 'kaajal' : 'ridit';
         speechEl.textContent = text;
         speechEl.style.display = 'block';
         // restart the pop-in animation
@@ -1617,12 +1797,20 @@ document.addEventListener('DOMContentLoaded', () => {
         speechTimer = setTimeout(() => { speechEl.style.display = 'none'; }, ms || 7000);
     }
 
-    const POKE_LINES = ['Hehe stop 🙈', 'Ow! 😳', "I'm awake, I'm awake", 'Five more minutes...', 'Babylove?', 'That tickles!'];
+    const POKE_LINES = {
+        ridit: ['Hehe stop 🙈', 'Ow! 😳', "I'm awake, I'm awake", 'Five more minutes...', 'Babylove?', 'That tickles!'],
+        kaajal: ['Oi! 😤', 'Hehe 🙈', 'Baby me wants a Bournville', 'Where my man at 😔', "I'm angy now 😠", 'That tickles!']
+    };
 
-    canvas.addEventListener('click', () => {
-        scene.pokeUntil = performance.now() + 700;
+    // Tapping pokes whichever of them is closer to the tap
+    canvas.addEventListener('click', event => {
+        const x = (event.offsetX / canvas.clientWidth) * W;
+        const cast = onScreen();
+        const who = cast.reduce((a, b) => Math.abs(heads[b] - x) < Math.abs(heads[a] - x) ? b : a);
+        scene.poke = { who, until: performance.now() + 700 };
         if (speechEl.style.display === 'none') {
-            say(POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)], 1800);
+            const lines = POKE_LINES[who];
+            say(lines[Math.floor(Math.random() * lines.length)], 1800, who);
         }
     });
 
@@ -1798,7 +1986,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const reply = latestReply();
         if (reply) {
-            setAnimation(reply.animation, reply.location);
+            setAnimation(reply.animation, reply.location, reply.cast, reply.kaajal_animation);
             renderSuggestions(reply.suggestions);
         }
     }
@@ -1818,8 +2006,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyReply(reply) {
-        setAnimation(reply.animation, reply.location);
-        say(reply.speech);
+        setAnimation(reply.animation, reply.location, reply.cast, reply.kaajal_animation);
+        say(reply.speech, 0, reply.speaker);
         renderSuggestions(reply.suggestions);
     }
 

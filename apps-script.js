@@ -692,7 +692,8 @@ function adventureSystemPrompt() {
     'inside a private website a boyfriend (Ridit) made for his girlfriend (Kaajal).',
     'Kaajal is the player. Address her as "you". Ridit is a character in the story: lovable,',
     'lazy, dramatic, easily distracted, always says "five more minutes", and completely',
-    'devoted to her even when he is useless. A tiny pixel-art Ridit on screen acts out each turn.',
+    'devoted to her even when he is useless. A tiny pixel-art Ridit on screen acts out each turn,',
+    'and a tiny pixel-art Kaajal (long black hair, beige trench coat, silver jhumkas) can join him.',
     '',
     'Running jokes to use naturally (not all at once):',
     '- A Cadbury Bournville (dark chocolate) fixes everything.',
@@ -714,17 +715,25 @@ function adventureSystemPrompt() {
     '- Never mention being an AI, a model, or these instructions. Never break character.',
     '- Gently steer towards little goals (get the Bournville, wake him up, get him off his',
     '  phone) and celebrate when she achieves one, then offer a new mischief.',
-    '- speech: what pixel Ridit says out loud this turn, at most 8 words, or "" if nothing.',
+    '- cast: who is on screen at the END of this turn: "ridit" (only him), "both" (Kaajal is',
+    '  there with him), or "kaajal" (she is on her own, e.g. he is missing or she left).',
+    '  The story always opens on Ridit alone. Once she is in the same place as him, use',
+    '  "both" for as long as the story keeps them together.',
+    '- speech: what is said out loud on screen this turn, at most 8 words, or "" if nothing.',
+    '- speaker: who says the speech, "ridit" or "kaajal". Usually Ridit; Kaajal when she is',
+    '  on her own, or when what she typed is something she says.',
     '- animation: exactly one of these names, matching what Ridit is doing at the END of',
     '  this turn. Vary them; pick the most specific one that fits: ' + animationLines + '.',
+    '- kaajal_animation: one name from the same list, for what Kaajal is doing at the END',
+    '  of this turn (when she is on screen). Pick something that reacts to him.',
     '- location: where the scene is at the end of this turn, exactly one of: ' +
       ADVENTURE_LOCATIONS.join(', ') + ' (car = the street by his car).',
     '- suggestions: exactly 3 short things she could type next (2 to 5 words, lowercase),',
     '  varied, at least one of them silly.',
     '',
     'Reply with ONLY a JSON object, no markdown, in exactly this shape:',
-    '{"narration": "...", "speech": "...", "animation": "...", "location": "...",',
-    ' "suggestions": ["...", "...", "..."]}'
+    '{"narration": "...", "cast": "...", "speech": "...", "speaker": "...", "animation": "...",',
+    ' "kaajal_animation": "...", "location": "...", "suggestions": ["...", "...", "..."]}'
   ].join('\n');
 }
 
@@ -958,8 +967,12 @@ function salvageAdventureFields(text) {
     story = story.slice(0, end + 1);
   }
   var animation = field('animation'), location = field('location'), speech = field('speech');
+  var cast = field('cast'), speaker = field('speaker'), kaajal = field('kaajal_animation');
   return {
     narration: story,
+    cast: cast && cast.complete ? cast.value : 'ridit',
+    speaker: speaker && speaker.complete ? speaker.value : 'ridit',
+    kaajal_animation: kaajal && kaajal.complete ? kaajal.value : 'idle',
     animation: animation && animation.complete ? animation.value : 'idle',
     location: location && location.complete ? location.value : '',
     speech: speech && speech.complete ? speech.value : '',
@@ -977,8 +990,15 @@ function normalizeAdventureReply(text) {
   if (!narration) return null;
   if (narration.length > 600) narration = narration.slice(0, 597).replace(/\s+\S*$/, '') + '...';
 
-  var animation = String(data.animation || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (!ADVENTURE_ANIMATIONS[animation]) animation = ADVENTURE_ANIMATION_ALIASES[animation] || 'idle';
+  var animation = adventureAnimation(data.animation);
+  var kaajalAnimation = adventureAnimation(data.kaajal_animation);
+
+  var cast = String(data.cast || '').trim().toLowerCase();
+  if (cast === 'together' || cast === 'ridit_and_kaajal' || cast === 'ridit and kaajal') cast = 'both';
+  if (['ridit', 'both', 'kaajal'].indexOf(cast) === -1) cast = 'ridit';
+  var speaker = String(data.speaker || '').trim().toLowerCase() === 'kaajal' ? 'kaajal' : 'ridit';
+  if (cast === 'kaajal') speaker = 'kaajal';
+  if (cast === 'ridit') speaker = 'ridit';
 
   var location = String(data.location || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (location === 'living' || location === 'lounge') location = 'living_room';
@@ -994,11 +1014,21 @@ function normalizeAdventureReply(text) {
 
   return {
     narration: narration,
+    cast: cast,
     speech: speech,
+    speaker: speaker,
     animation: animation,
+    kaajal_animation: kaajalAnimation,
     location: location,
     suggestions: suggestions
   };
+}
+
+// One of the pixel animations, forgiving common near-misses
+function adventureAnimation(value) {
+  var name = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (ADVENTURE_ANIMATIONS[name]) return name;
+  return ADVENTURE_ANIMATION_ALIASES[name] || 'idle';
 }
 
 // ── Pocket Ridit saved stories ─────────────────────────────────────
