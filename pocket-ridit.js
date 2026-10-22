@@ -80,8 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const HEAD_TOP = -40; // relative to his feet; the chin sits on the collar
 
-    // Kaajal's head, from her photos and videos, drawn cute: a soft oval
-    // face tapering to her chin, glossy dark hair with a centre part that frames her face and
+    // Kaajal's head, from her photos and videos, drawn cute: a slim, soft
+    // face, widest at her cheeks and rounding gently into her chin, glossy dark hair with a centre part that frames her face and
     // puffs out to her shoulders, big shiny eyes with lashes and liner,
     // soft arched brows, a button nose, glossy pink lips and rosy cheeks.
     // Same grid as Ridit's, so expressions line up.
@@ -102,11 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
         'HHSSSSSSSSSSSSSSHH',
         'HHSSSSSSSnSSSSSSHH',
         'HHSSSSSSSSSSSSSSHH',
-        'HHHnSSSSSSSSSSnHHH',
-        'HHHHnSSSSSSSSnHHHH',
-        'HHHHHnSSSSSSnHHHHH',
-        'HHHHHHSSSSSSHHHHHH',
-        '.HHHHHHSSSSHHHHHH.'
+        'HHSSSSSSSSSSSSSSHH',
+        'HHHSSSSSSSSSSSSHHH',
+        'HHHSSSSSSSSSSSSHHH',
+        'HHHHSSSSSSSSSSHHHH',
+        '.HHHHHSSSSSSHHHHH.'
     ];
 
     const C = {
