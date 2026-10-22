@@ -109,30 +109,87 @@ document.addEventListener('DOMContentLoaded', () => {
         '.HHHHHSSSSSSHHHHH.'
     ];
 
+    // The same head, about 15% smaller in both directions, so she's more in
+    // proportion with her body. Her features are drawn exactly as on the
+    // full grid, then mapped onto this one.
+    const KAAJAL_HEAD_SMALL = [
+        '...HHHHHHHH...',
+        '.HHhhHHHHhhHH.',
+        'HHhHHHSSHHHhHH',
+        'HHHHHSSSSHHHHH',
+        'HHHSSSSSSSSHHH',
+        'HHSSSSSSSSSSHH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSnSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HSSSSSSSSSSSSH',
+        'HHSSSSSSSSSSHH',
+        'HHHSSSSSSSSHHH',
+        '.HHHSSSSSSHHH.'
+    ];
+
+    // "TAM" (The Archer Media) for her hoodie, in a 3x5 pixel font
+    const TAM = [
+        '###.###.#.#',
+        '.#..#.#.###',
+        '.#..###.###',
+        '.#..#.#.#.#',
+        '.#..#.#.#.#'
+    ];
+
     const C = {
         eye: '#1a1210', white: '#f4ece4',
         blush: '#ef7f9c', heart: '#e8344e', angry: '#d9483b',
         wrapper: '#4b1f5c', gold: '#d4a63a', choc: '#5a3420', silver: '#c9d1d8'
     };
 
+    // Kaajal's looks. Change KAAJAL_STYLE to switch between them:
+    //   'hoodie'    her smaller head, black TAM hoodie and jeans (current)
+    //   'hoodie-up' the same with the hood up over her head
+    //   'classic'   her first look: bigger head, beige trench coat
+    const KAAJAL_STYLE = 'hoodie';
+    const KAAJAL_FACE = {
+        stubble: '#d39a74', skin: '#d39a74', skinShade: '#c0835f', hair: '#1d1416', hairLight: '#4a3a3e',
+        lip: '#d46a7c', lipDark: '#b04f62', lipLight: '#e8909d', brow: '#4a3029', shoe: '#f4f4f4'
+    };
+    const KAAJAL_HOODIE = Object.assign({}, KAAJAL_FACE, {
+        head: KAAJAL_HEAD_SMALL, small: true, short: 0, headDrop: 3, sleeve: 0.85, outfit: 'hoodie',
+        top: '#1e1e22', topShade: '#141417', collar: '#2c2c34',
+        pants: '#5b6f96', pantsShade: '#4a5c80'
+    });
+    const KAAJAL_STYLES = {
+        hoodie: KAAJAL_HOODIE,
+        'hoodie-up': Object.assign({}, KAAJAL_HOODIE, { hood: true, rise: 2, hoodColor: '#2e2e36', hoodRim: '#4c4c58' }),
+        classic: Object.assign({}, KAAJAL_FACE, {
+            head: KAAJAL_HEAD, short: 3, sleeve: 0.8, outfit: 'coat',
+            top: '#cdb497', topShade: '#b09878', collar: '#1e1e22',
+            pants: '#2a2630', pantsShade: '#1f1c24'
+        })
+    };
+
     // How each of them looks. Ridit: black tee, beige trousers, white shoes.
-    // Kaajal: her beige trench coat over a black top, black trousers.
     const LOOKS = {
         ridit: {
             head: HEAD, short: 0, sleeve: 0.35, stubble: '#94664c',
             skin: '#c28763', skinShade: '#a46c4c', hair: '#151112', hairLight: '#2e2523',
             lip: '#b06a72', lipDark: '#7a3f45',
             top: '#1e1e22', topShade: '#141417', collar: '#2c2c32',
-            pants: '#cbbda4', pantsShade: '#b3a68e', shoe: '#f4f4f4'
+            pants: '#cbbda4', pantsShade: '#b3a68e', shoe: '#f4f4f4', outfit: 'tee'
         },
-        kaajal: {
-            head: KAAJAL_HEAD, short: 3, sleeve: 0.8, stubble: '#d39a74',
-            skin: '#d39a74', skinShade: '#c0835f', hair: '#1d1416', hairLight: '#4a3a3e',
-            lip: '#d46a7c', lipDark: '#b04f62', lipLight: '#e8909d', brow: '#4a3029',
-            top: '#cdb497', topShade: '#b09878', collar: '#1e1e22',
-            pants: '#2a2630', pantsShade: '#1f1c24', shoe: '#f4f4f4'
-        }
+        kaajal: KAAJAL_STYLES[KAAJAL_STYLE] || KAAJAL_HOODIE
     };
+
+    // Where the top of someone's head is, relative to Ridit's: her hood
+    // adds a little on top
+    function headOffset(who) {
+        const L = LOOKS[who];
+        return L.short + (L.headDrop || 0) - (L.rise || 0);
+    }
 
     const GLYPHS = {
         heart: ['##.##', '#####', '.###.', '..#..'],
@@ -231,12 +288,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const up = pose.bob + (pose.legs === 'sit' ? 4 : 0) + L.short;
         const p = (x, y, w, h, color) => rect(s, SOX + x, SOY + y, w, h, color);
         const B = -19 + up;
-        const T = HEAD_TOP + up;
+        const T = HEAD_TOP + up + (L.headDrop || 0);
+        // her smaller head is drawn on its own grid: features keep their
+        // full-grid positions and are mapped onto it
+        const small = !!L.small;
+        const cm = c => small ? c - (c >= 1) - (c >= 2) - (c >= 15) - (c >= 16) - 7 : c - 9;
+        const rm = r => small ? r - (r > 1) - (r > 5) - (r > 19) : r;
 
         // Her thick hair puffs out around her face and down to her shoulders
-        if (who === 'kaajal' && pose.lying) {
+        if (L.hood) {
+            // or the hood sits behind her head and down to her shoulders
+            p(-9, T + 1, 18, B + 1 - (T + 1), L.hoodColor); p(-8, T, 16, 1, L.hoodColor);
+        } else if (who === 'kaajal' && pose.lying) {
             // lying down, it fans out over the pillow instead
-            p(-10, T + 2, 20, 16, L.hair); p(-9, T, 18, 2, L.hair);
+            if (small) { p(-8, T + 2, 16, 13, L.hair); p(-7, T, 14, 2, L.hair); }
+            else { p(-10, T + 2, 20, 16, L.hair); p(-9, T, 18, 2, L.hair); }
+        } else if (who === 'kaajal' && small) {
+            p(-8, T + 2, 16, B + 3 - (T + 2), L.hair);
+            p(-9, T + 7, 18, B + 2 - (T + 7), L.hair);
+            p(-10, T + 11, 20, B + 1 - (T + 11), L.hair);
+            p(-11, B - 1, 2, 2, L.hair); p(9, B - 1, 2, 2, L.hair);
+            p(-9, T + 8, 1, 8, L.hairLight); p(8, T + 10, 1, 7, L.hairLight);
         } else if (who === 'kaajal') {
             p(-10, T + 3, 20, B + 3 - (T + 3), L.hair);
             p(-11, T + 9, 22, B + 2 - (T + 9), L.hair);
@@ -264,21 +336,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Body: his black tee, or her trench coat
+        // Body: his black tee, her hoodie, or her trench coat
         p(-6, B, 12, 11, L.top);
         p(-6, B + 10, 12, 1, L.topShade);
-        if (who === 'kaajal') {
+        if (L.outfit === 'coat') {
             // black top and gold chain in the open collar, lapels, belt, and
             // the coat's skirt over the top of her legs
             p(-2, B, 4, 1, L.collar); p(-1, B + 1, 2, 2, L.collar); p(-1, B + 2, 2, 1, C.gold);
             p(-3, B, 1, 4, L.topShade); p(2, B, 1, 4, L.topShade);
             p(-6, B + 7, 12, 1, L.topShade);
             if (legs !== 'sit') { p(-6, B + 11, 12, 2, L.top); p(-1, B + 11, 1, 2, L.topShade); }
-            // and her hair falls just over her shoulders
-            p(-7, B - 1, 3, 3, L.hair); p(-7, B + 2, 2, 1, L.hair);
-            p(4, B - 1, 3, 3, L.hair); p(5, B + 2, 2, 1, L.hair);
+        } else if (L.outfit === 'hoodie') {
+            // black hoodie: the hood round her neck, drawstrings, the TAM
+            // logo (periwinkle and lavender, after the Archer Media
+            // wordmark) and a pocket
+            p(-4, B, 8, 1, L.collar);
+            p(-2, B + 1, 1, 2, '#c9c9d2'); p(1, B + 1, 1, 2, '#c9c9d2');
+            TAM.forEach((row, r) => {
+                for (let c = 0; c < row.length; c++) {
+                    if (row[c] === '#') p(-5 + c, B + 3 + r, 1, 1, c >= 4 && c <= 6 ? '#e8e8f0' : '#484fa2');
+                }
+            });
+            p(-4, B + 9, 8, 1, L.topShade);
         } else {
             p(-3, B, 6, 1, L.collar);
+        }
+        if (who === 'kaajal') {
+            // her hair falls just over her shoulders
+            p(-7, B - 1, 3, 3, L.hair); p(-7, B + 2, 2, 1, L.hair);
+            p(4, B - 1, 3, 3, L.hair); p(5, B + 2, 2, 1, L.hair);
         }
 
         // Arms: a sleeve, then bare arm down to the hand
@@ -294,13 +380,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Head
-        const f = (col, row, w, h, color) => p(col - 9, T + row, w, h, color);
+        const f = (col, row, w, h, color) => p(cm(col), T + rm(row), w, h, color);
         const HEAD_COLORS = { H: L.hair, h: L.hairLight, S: L.skin, n: L.skinShade, E: L.skinShade, B: L.stubble };
         L.head.forEach((row, r) => {
             for (let col = 0; col < row.length; col++) {
-                if (row[col] !== '.') f(col, r, 1, 1, HEAD_COLORS[row[col]]);
+                if (row[col] === '.') continue;
+                if (small) p(col - 7, T + r, 1, 1, HEAD_COLORS[row[col]]);
+                else f(col, r, 1, 1, HEAD_COLORS[row[col]]);
             }
         });
+
+        if (L.hood) {
+            // the hood up over her crown and down both sides of her face,
+            // with a lighter rim where it opens
+            p(-7, T - 1, 14, 1, L.hoodColor); p(-5, T - 2, 10, 1, L.hoodColor);
+            p(-9, T + 1, 2, 17, L.hoodColor); p(7, T + 1, 2, 17, L.hoodColor);
+            p(-8, T, 1, 1, L.hoodColor); p(7, T, 1, 1, L.hoodColor);
+            p(-6, T, 12, 1, L.hoodRim); p(-7, T + 1, 1, 15, L.hoodRim); p(6, T + 1, 1, 15, L.hoodRim);
+        }
 
         if (pose.tint > 0) {
             s.globalAlpha = Math.min(1, pose.tint);
@@ -363,9 +460,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'happy':
                     f(ex, 13, 1, 1, C.eye); f(ex + 1, 12, 1, 1, C.eye); f(ex + 2, 13, 1, 1, C.eye); break;
                 case 'heart':
-                    glyph(s, 'tinyHeart', SOX + ex - 9, SOY + T + 11, C.heart); break;
+                    glyph(s, 'tinyHeart', SOX + cm(ex), SOY + T + rm(11), C.heart); break;
                 case 'x':
-                    glyph(s, 'x', SOX + ex - 9, SOY + T + 11, C.eye); break;
+                    glyph(s, 'x', SOX + cm(ex), SOY + T + rm(11), C.eye); break;
                 case 'wide':
                     f(ex, 11, 3, 1, C.eye); f(ex, 12, 3, 2, C.white); f(ex + 1, 12, 1, 2, C.eye); break;
                 case 'down':
@@ -395,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // rosy cheeks and little silver jhumkas
             if (!pose.blush) { f(3, 15, 2, 1, '#eb9a9a'); f(13, 15, 2, 1, '#eb9a9a'); }
-            [0, 17].forEach(col => {
+            if (!L.hood) [0, 17].forEach(col => {
                 f(col, 15, 1, 2, C.silver); f(col, 17, 1, 1, '#ffffff');
             });
         }
@@ -1664,7 +1761,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const her = actors.find(a => a.who === 'kaajal');
         const standing = a => !a.frame.lying && a.frame.pose.legs !== 'sit';
         if (!him || !her || !standing(him) || !standing(her)) return;
-        const top = a => (a.frame.groundY || GROUND) + (a.frame.jump || 0) + a.frame.pose.bob + LOOKS[a.who].short;
+        const top = a => (a.frame.groundY || GROUND) + (a.frame.jump || 0) + a.frame.pose.bob + headOffset(a.who);
         const gap = top(her) - top(him);
         if (gap < HEIGHT_GAP) her.frame.pose.bob += HEIGHT_GAP - gap;
     }
@@ -1703,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fronts = [];
         order.forEach(({ who, frame }, i) => {
             const sprite = sprites[who];
-            const short = LOOKS[who].short;
+            const short = headOffset(who);
             frame.pose.lying = !!frame.lying;
             drawPerson(sprite, who, frame.pose);
             let hx, hy;
