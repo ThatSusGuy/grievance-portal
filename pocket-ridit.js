@@ -149,22 +149,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Kaajal's looks. Change KAAJAL_STYLE to switch between them:
-    //   'hoodie'    her smaller head, black TAM hoodie and jeans (current)
-    //   'hoodie-up' the same with the hood up over her head
-    //   'classic'   her first look: bigger head, beige trench coat
+    //   'hoodie'       her face as first drawn, black TAM hoodie and jeans (current)
+    //   'hoodie-small' the same hoodie with a smaller head
+    //   'classic'      her first look: beige trench coat
+    // In a hoodie she can put the hood up or down by typing it in the story.
     const KAAJAL_STYLE = 'hoodie';
     const KAAJAL_FACE = {
         stubble: '#d39a74', skin: '#d39a74', skinShade: '#c0835f', hair: '#1d1416', hairLight: '#4a3a3e',
         lip: '#d46a7c', lipDark: '#b04f62', lipLight: '#e8909d', brow: '#4a3029', shoe: '#f4f4f4'
     };
     const KAAJAL_HOODIE = Object.assign({}, KAAJAL_FACE, {
-        head: KAAJAL_HEAD_SMALL, small: true, short: 0, headDrop: 3, sleeve: 0.85, outfit: 'hoodie',
+        head: KAAJAL_HEAD, short: 3, sleeve: 0.85, outfit: 'hoodie',
         top: '#1e1e22', topShade: '#141417', collar: '#2c2c34',
         pants: '#5b6f96', pantsShade: '#4a5c80'
     });
     const KAAJAL_STYLES = {
         hoodie: KAAJAL_HOODIE,
-        'hoodie-up': Object.assign({}, KAAJAL_HOODIE, { hood: true, rise: 2, hoodColor: '#2e2e36', hoodRim: '#4c4c58' }),
+        'hoodie-small': Object.assign({}, KAAJAL_HOODIE, { head: KAAJAL_HEAD_SMALL, small: true, short: 0, headDrop: 3 }),
         classic: Object.assign({}, KAAJAL_FACE, {
             head: KAAJAL_HEAD, short: 3, sleeve: 0.8, outfit: 'coat',
             top: '#cdb497', topShade: '#b09878', collar: '#1e1e22',
@@ -184,10 +185,18 @@ document.addEventListener('DOMContentLoaded', () => {
         kaajal: KAAJAL_STYLES[KAAJAL_STYLE] || KAAJAL_HOODIE
     };
 
+    // Her hood, when she's put it up (only with a hoodie on)
+    const HOOD_UP = { hood: true, rise: 2, hoodColor: '#2e2e36', hoodRim: '#4c4c58' };
+    let hoodUp = false;
+    function lookOf(who) {
+        const L = LOOKS[who];
+        return who === 'kaajal' && hoodUp && L.outfit === 'hoodie' ? Object.assign({}, L, HOOD_UP) : L;
+    }
+
     // Where the top of someone's head is, relative to Ridit's: her hood
     // adds a little on top
     function headOffset(who) {
-        const L = LOOKS[who];
+        const L = lookOf(who);
         return L.short + (L.headDrop || 0) - (L.rise || 0);
     }
 
@@ -281,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawPerson(sprite, who, pose) {
-        const L = LOOKS[who];
+        const L = lookOf(who);
         const s = sprite.getContext('2d');
         s.clearRect(0, 0, sprite.width, sprite.height);
         // Kaajal is a little shorter: everything above her legs sits lower
@@ -294,11 +303,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const small = !!L.small;
         const cm = c => small ? c - (c >= 1) - (c >= 2) - (c >= 15) - (c >= 16) - 7 : c - 9;
         const rm = r => small ? r - (r > 1) - (r > 5) - (r > 19) : r;
+        // the head's outline, for fitting the hood round it
+        const hl = small ? -7 : -9, hw = small ? 14 : 18, hr = hl + hw - 1, hh = small ? 18 : 21;
 
         // Her thick hair puffs out around her face and down to her shoulders
         if (L.hood) {
             // or the hood sits behind her head and down to her shoulders
-            p(-9, T + 1, 18, B + 1 - (T + 1), L.hoodColor); p(-8, T, 16, 1, L.hoodColor);
+            p(hl - 2, T + 1, hw + 4, B + 1 - (T + 1), L.hoodColor); p(hl - 1, T, hw + 2, 1, L.hoodColor);
         } else if (who === 'kaajal' && pose.lying) {
             // lying down, it fans out over the pillow instead
             if (small) { p(-8, T + 2, 16, 13, L.hair); p(-7, T, 14, 2, L.hair); }
@@ -393,10 +404,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (L.hood) {
             // the hood up over her crown and down both sides of her face,
             // with a lighter rim where it opens
-            p(-7, T - 1, 14, 1, L.hoodColor); p(-5, T - 2, 10, 1, L.hoodColor);
-            p(-9, T + 1, 2, 17, L.hoodColor); p(7, T + 1, 2, 17, L.hoodColor);
-            p(-8, T, 1, 1, L.hoodColor); p(7, T, 1, 1, L.hoodColor);
-            p(-6, T, 12, 1, L.hoodRim); p(-7, T + 1, 1, 15, L.hoodRim); p(6, T + 1, 1, 15, L.hoodRim);
+            p(hl, T - 1, hw, 1, L.hoodColor); p(hl + 2, T - 2, hw - 4, 1, L.hoodColor);
+            p(hl - 2, T + 1, 2, hh - 1, L.hoodColor); p(hr + 1, T + 1, 2, hh - 1, L.hoodColor);
+            p(hl - 1, T, 1, 1, L.hoodColor); p(hr + 1, T, 1, 1, L.hoodColor);
+            p(hl + 1, T, hw - 2, 1, L.hoodRim); p(hl, T + 1, 1, hh - 3, L.hoodRim); p(hr, T + 1, 1, hh - 3, L.hoodRim);
         }
 
         if (pose.tint > 0) {
@@ -2099,6 +2110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addLine('pocket-you', '> ' + turn.input);
             addLine('pocket-narration', turn.reply.narration);
         });
+        hoodUp = !!story.kaajalHood;
         const reply = latestReply();
         if (reply) {
             setAnimation(reply.animation, reply.location, reply.cast, reply.kaajal_animation);
@@ -2210,6 +2222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = opening.title;
         delete opening.title;
         story = { id: newStoryId(), user: portalUser(), title: title, createdAt: Date.now(), opening: opening, turns: [] };
+        hoodUp = false;
         saveStory();
         addLine('pocket-narration', opening.narration);
         applyReply(opening);
@@ -2346,12 +2359,27 @@ document.addEventListener('DOMContentLoaded', () => {
         callAdventure({ action: 'warmup' }).catch(() => { /* just a nudge */ });
     }
 
+    // "put my hood on", "hood up", "take the hood off", "cap down"...
+    function hoodChange(text) {
+        const t = text.toLowerCase();
+        if (!/\b(hood|cap)\b/.test(t)) return null;
+        if (/\b(off|down|remove|take)\b/.test(t)) return false;
+        if (/\b(on|up|put|pull|wear|wearing)\b/.test(t)) return true;
+        return null;
+    }
+
     function takeTurn(text) {
         const command = String(text || '').trim();
         if (busy || !command) return;
         if (!story.opening) {
             startStory();
             return;
+        }
+        const hood = hoodChange(command);
+        if (hood !== null) {
+            // she sees it straight away; it's saved with the story's next turn
+            hoodUp = hood;
+            story.kaajalHood = hood;
         }
         const playing = story;
         setBusy(true);
